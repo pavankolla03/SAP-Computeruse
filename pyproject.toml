@@ -1,0 +1,44 @@
+[tool.poetry]
+name = "sap-cua"
+version = "0.1.0"
+description = "SAP-Native 7B Computer-Use Agent"
+authors = ["SAP-CUA Team"]
+license = "MIT"
+readme = "README.md"
+packages = [{include = "sap_cua", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.11"
+fastapi = "^0.109.0"
+uvicorn = {extras = ["standard"], version = "^0.27.0"}
+pydantic = "^2.5.0"
+pydantic-settings = "^2.1.0"
+pillow = "^10.2.0"
+httpx = "^0.27.0"
+tenacity = "^8.2.0"
+sqlalchemy = "^2.0.0"
+aiofiles = "^23.3.0"
+python-dotenv = "^1.0.0"
+pyyaml = "^6.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^8.0.0"
+pytest-asyncio = "^0.23.0"
+pytest-cov = "^5.0.0"
+pytest-mock = "^3.12.0"
+ruff = "^0.3.0"
+mypy = "^1.9.0"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.mypy]
+python_version = "3.11"
+strict = true
+ignore_missing_imports = true

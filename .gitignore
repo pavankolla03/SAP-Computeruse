@@ -1,0 +1,71 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+dist/
+build/
+.eggs/
+*.egg
+
+# Virtual environments
+venv/
+.venv/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Data
+datasets/raw/screenshots/
+datasets/raw/videos/
+datasets/raw/recordings/
+model_registry/*/
+!model_registry/README.md
+
+# Secrets
+*.pem
+*.key
+*.p12
+.env.local
+.env.secrets
+
+# ML
+mlruns/
+mlartifacts/
+wandb/
+lightning_logs/
+
+# Docker
+.dockerignore
+
+# Tests
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Logs
+logs/
+*.log
+reports/
+
+# DVC
+.dvc/
+.dvcignore
+
+# GPU
+infra/gpu/jobs/*/
+
+# Temporary
+tmp/
+temp/
+*.tmp
