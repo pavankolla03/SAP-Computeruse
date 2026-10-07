@@ -74,3 +74,20 @@
 - Recovery requires navigation + action capability
 - RL requires all prior stages working
 - Empirical support from GUI-R1 and verl-agent
+
+
+## ADR-006: Observed outcomes and explicit mock boundaries
+
+Date: 2026-10-07. Status: implemented in the first audit repair.
+
+Use one agent execution loop for API and benchmark. Require caller-owned verification
+criteria and independently observed state before marking a task successful. Model
+confidence and successful individual actions are not completion evidence. Mock results
+must identify their backend. Missing executors and unsupported actions fail explicitly.
+
+Sanitize structured objects before JSON encoding. Never restore raw data after a
+sanitization/parsing error. Preserve distinct action events even if screenshots match.
+Each rollout has a separate storage ID. Image sanitization remains a separate admission gate.
+
+Task retries default to disabled and require an explicit safe-to-retry decision.
+Automatic replay of a failed SAP mutation can duplicate effects with an unknown outcome.

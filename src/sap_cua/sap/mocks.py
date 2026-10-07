@@ -102,7 +102,6 @@ class SAPMockEnvironment:
             return {"success": False, "error": f"iFlow {key} not found"}
         iflow["status"] = "DEPLOYED"
         iflow["deployed_at"] = time.time()
-        self._add_mpl_entry(key, "COMPLETED")
         logger.info("[MOCK] Deployed iFlow: %s", key)
         return {"success": True, "status": "DEPLOYED"}
 
@@ -153,6 +152,10 @@ class SAPMockEnvironment:
 
     def execute_action(self, action: SAPActionType, args: dict[str, Any]) -> dict[str, Any]:
         """Execute a mock SAP action."""
+        try:
+            action = SAPActionType(action)
+        except ValueError:
+            return {"success": False, "error": f"Unknown action: {action}"}
         definition = get_action_definition(action)
         if definition is None:
             return {"success": False, "error": f"Unknown action: {action}"}
@@ -163,6 +166,7 @@ class SAPMockEnvironment:
 
         method_map = {
             SAPActionType.CREATE_PACKAGE: lambda: self.create_package(args["name"], args.get("description", "")),
+            SAPActionType.DELETE_PACKAGE: lambda: self.delete_package(args["package_id"]),
             SAPActionType.CREATE_IFLOW: lambda: self.create_iflow(args["package_id"], args["name"], args.get("template", "Empty")),
             SAPActionType.DEPLOY_IFLOW: lambda: self.deploy_iflow(args["package_id"], args["iflow_id"]),
             SAPActionType.ADD_SENDER: lambda: self.add_sender(args["package_id"], args["iflow_id"], args["adapter"], args.get("config", {})),
@@ -170,17 +174,12 @@ class SAPMockEnvironment:
             SAPActionType.ADD_CONTENT_MODIFIER: lambda: self.add_component(args["package_id"], args["iflow_id"], "ContentModifier", args.get("config", {})),
             SAPActionType.ADD_ROUTER: lambda: self.add_component(args["package_id"], args["iflow_id"], "Router", args.get("config", {})),
             SAPActionType.QUERY_MPL: lambda: {"success": True, "entries": self.query_mpl(args.get("iflow_key"))},
-            SAPActionType.CREATE_SECURITY_MATERIAL: lambda: {
-                "success": True,
-                "id": self._generate_id("sec"),
-                "type": args.get("type", "OAuth2ClientCredentials"),
-                "name": args.get("name", ""),
-            },
+
         }
         handler = method_map.get(action)
         if handler:
             return handler()
-        return {"success": True, "action": action.value, "mock": True}
+        return {"success": False, "error": f"Mock action not implemented: {action.value}", "mock": True}
 
 
     def observe(self) -> dict[str, Any]:

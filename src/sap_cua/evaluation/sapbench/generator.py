@@ -996,28 +996,45 @@ def generate_task(template_name: str, seed: int | None = None) -> TaskDefinition
     """Generate a single task from a template."""
     if template_name not in TASK_TEMPLATES:
         raise ValueError(f"Unknown template: {template_name}")
-    if seed is not None:
-        random.seed(seed)
+    rng = random.Random(seed)
     template = TASK_TEMPLATES[template_name]
-    variables = {k: _fill(str(v)) for k, v in template.get("variables", {}).items()}
+    substitutions = {
+        f"rand{n}": "".join(rng.choices(string.ascii_uppercase + string.digits, k=n))
+        for n in (4, 5, 6, 8)
+    }
+
+    def expand(value: Any) -> Any:
+        if isinstance(value, str):
+            for key, replacement in substitutions.items():
+                value = value.replace("{" + key + "}", replacement)
+            return value
+        if isinstance(value, dict):
+            return {key: expand(item) for key, item in value.items()}
+        if isinstance(value, list):
+            return [expand(item) for item in value]
+        return value
+
+    variables = {k: expand(str(v)) for k, v in template.get("variables", {}).items()}
+    substitutions.update(variables)
     instruction = template["instruction"]
     for k, v in variables.items():
         instruction = instruction.replace(f"{{{k}}}", str(v))
-    task_id = f"SB-{template_name}-{_r(4).lower()}"
+    task_id = f"SB-{template_name}-{substitutions['rand4'].lower()}"
     return TaskDefinition(
         task_id=task_id,
         instruction=instruction,
         module=template.get("module"),
         difficulty=template.get("difficulty", 1),
-        setup=template.get("setup"),
-        verify=template.get("verify"),
-        cleanup=template.get("cleanup"),
+        setup=expand(template.get("setup")),
+        verify=expand(template.get("verify")),
+        cleanup=expand(template.get("cleanup")),
         tags=[template.get("category", ""), template_name],
     )
 
 
 def generate_benchmark_suite(
     count_per_level: dict[int, int] | None = None,
+    *, seed: int = 0,
 ) -> list[TaskDefinition]:
     """Generate a full benchmark suite across all levels."""
     count_per_level = count_per_level or {1: 15, 2: 20, 3: 20, 4: 20, 5: 20}
@@ -1033,7 +1050,7 @@ def generate_benchmark_suite(
             continue
         for i in range(count):
             tpl = templates[i % len(templates)]
-            task = generate_task(tpl, seed=level * 10000 + i)
+            task = generate_task(tpl, seed=seed + level * 10000 + i)
             task.task_id = f"SB-L{level}-{tpl}-{i:03d}"
             tasks.append(task)
     return tasks

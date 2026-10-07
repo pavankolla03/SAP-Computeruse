@@ -143,57 +143,19 @@ class SAPRecorder:
                 for e in self.session.events
             ],
         }
-        session_file.write_text(json.dumps(data, indent=2, default=str))
+        from sap_cua.security import sanitize_data
+        session_file.write_text(json.dumps(sanitize_data(data), indent=2))
         logger.info("Saved session: %s", session_file)
 
 
-class TrajectoryProcessor:
-    """Process raw recordings into standardized trajectories."""
+from sap_cua.recorder.processor import TrajectoryProcessor as _TrajectoryProcessor
 
-    def __init__(self, storage_dir: str = "datasets/sanitized/trajectories") -> None:
-        self.storage_dir = Path(storage_dir)
-        self.storage_dir.mkdir(parents=True, exist_ok=True)
+
+class TrajectoryProcessor(_TrajectoryProcessor):
+    """Compatibility wrapper around the shared sanitized processor."""
 
     def process(self, session_data: dict[str, Any]) -> dict[str, Any]:
-        from sap_cua.security import redact_secrets
-        events = session_data.get("events", [])
-        steps: list[dict[str, Any]] = []
-        before_state: dict[str, Any] | None = None
-        for event in events:
-            data_str = json.dumps(event.get("data", {}))
-            redacted_data, _ = redact_secrets(data_str)
-            try:
-                redacted_dict = json.loads(redacted_data)
-            except Exception:
-                redacted_dict = event.get("data", {})
-            step = {
-                "before_state": before_state or {},
-                "after_state": redacted_dict,
-                "event_type": event.get("event_type"),
-                "screenshot": event.get("screenshot"),
-                "cursor": (event.get("cursor_x"), event.get("cursor_y")),
-                "application": event.get("application"),
-                "url": event.get("url"),
-            }
-            steps.append(step)
-            before_state = redacted_dict
-        return {
-            "task_id": session_data.get("task_id", "unknown"),
-            "task": session_data.get("task_id", "unknown"),
-            "environment": {
-                "product": "Integration Suite",
-                "module": "Cloud Integration",
-                "resolution": [1440, 900],
-            },
-            "steps": steps,
-            "final_verification": {"success": session_data.get("metadata", {}).get("success", False)},
-            "success": session_data.get("metadata", {}).get("success", False),
-        }
+        return self.process_session(session_data)
 
     def save(self, trajectory: dict[str, Any], name: str) -> Path:
-        from sap_cua.security import redact_secrets
-        traj_str = json.dumps(trajectory)
-        sanitized, _ = redact_secrets(traj_str)
-        file_path = self.storage_dir / f"{name}.json"
-        file_path.write_text(sanitized)
-        return file_path
+        return Path(super().save(trajectory, name))

@@ -1,37 +1,12 @@
-# SAP-CUA Blockers
+# External dependencies and blockers
 
-## Current Blockers
+Repository access is available at `/Users/it-stock/Desktop/SAP_Computer_USE`.
+Git is already initialized. Preserve the current repository and its uncommitted changes.
 
-| # | Blocker | Impact | Resolution |
-|---|---------|--------|------------|
-| B-001 | SAP sandbox credentials | Cannot run live integration tests | User provides credentials |
-| B-002 | Git init permission denied in project folder | Cannot init/push repo | User must run: `cd \"/Users/it-stock/Desktop/AI agentic one/SAP_Computer_USE\" && rm -rf .git && git init && git add -A && git commit -m \"Initial scaffold\"` then create GitHub repo and push |
-| B-003 | GPU access for heavy training | Cannot run LoRA/RL | Use cloud GPU provider (RunPod, Vast, etc.) |
+Local engineering is not blocked by SAP credentials or GPUs. Implement and verify local contracts, fixtures, packaging, inference adapters, and data processing first.
 
-## Why B-002 exists
-The `.git/hooks/` directory has `@` extended attribute with read-only permissions.
-Claude Code auto mode blocks writing to it. macOS filesystem ACL prevents git init
-from copying hook templates. User must run the commands in Terminal.app directly.
+Before live SAP validation: obtain a sandbox tenant and scoped authentication; user handles any required MFA. Do not use production tenants as test fixtures.
+Before real GPU training: validate the real training pipeline, choose compute, define a spending cap, and obtain authorization for actual GPU/cloud spend.
+Before distribution or competitor claims: verify upstream model/dataset licensing, exact revisions and matched evaluation conditions.
 
-## Resolved Blockers
-
-| # | Blocker | Resolution |
-|---|---------|------------|
-| - | Git permissions in project folder | Documented as B-002, user must resolve manually |
-| - | No SAP access | Mock environment built |
-| - | Python 3.9 compatibility | Fixed |
-| - | Duplicate history append in MockModel | Fixed |
-| - | Duplicate history append in OpenCUAAdapter | Fixed |
-| - | Security pattern ordering | Fixed |
-| - | Template variable passing | Fixed |
-| - | Missing observe() in mock env | Fixed |
-| - | Missing execute() in router | Fixed |
-| - | Missing agent_loop.py | Fixed |
-
-## Escalation Path
-
-When a blocker is encountered:
-1. Record it here
-2. Continue with all non-blocked work
-3. Document the exact input needed to unblock
-4. Do not wait for resolution before continuing
+No trained checkpoint or validated SAP demonstration dataset exists in the inspected repository. These must be produced; they are not just configuration switches.

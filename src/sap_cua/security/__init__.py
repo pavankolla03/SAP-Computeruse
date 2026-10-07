@@ -5,11 +5,13 @@ from __future__ import annotations
 import logging
 import os
 import re
+from pathlib import Path
 from typing import Any
 
 logger = logging.getLogger(__name__)
 
 _SECRET_PATTERNS = [
+    (re.compile(r"-----BEGIN ([A-Z ]*PRIVATE KEY)-----.*?-----END \1-----", re.DOTALL), "REDACTED_PRIVATE_KEY"),
     (re.compile(r"client_secret\s*[:=]\s*.+", re.IGNORECASE), "REDACTED_CLIENT_SECRET"),
     (re.compile(r"password(?:\s+is|\s+was)?\s*[:=]?\s*.+", re.IGNORECASE), "REDACTED_PASSWORD"),
     (re.compile(r"secret\s*[:=]\s*.+", re.IGNORECASE), "REDACTED_SECRET"),
@@ -31,10 +33,45 @@ def redact_secrets(text: str) -> tuple[str, list[dict[str, Any]]]:
     for pattern, replacement in _SECRET_PATTERNS:
         matches = list(pattern.finditer(redacted))
         for match in reversed(matches):
-            original = match.group(0)
-            findings.append({"type": replacement, "match": original[:32] + "..." if len(original) > 32 else original})
+            findings.append({"type": replacement, "length": len(match.group(0))})
             redacted = redacted[: match.start()] + replacement + redacted[match.end() :]
     return redacted, findings
+
+
+_SECRET_KEYS = {
+    "password", "passwd", "clientsecret", "secret", "apikey", "accesstoken",
+    "refreshtoken", "idtoken", "token", "privatekey", "authorization",
+    "proxyauthorization", "cookie", "setcookie", "clientassertion",
+}
+
+
+def sanitize_data(value: Any) -> Any:
+    """Return a sanitized JSON-compatible copy without rewriting JSON syntax.
+
+    This handles text and structured fields only. Referenced image pixels require
+    a separate image-redaction/review gate before use in training.
+    """
+    if isinstance(value, dict):
+        return {
+            key: "[REDACTED]" if re.sub(r"[^a-z0-9]", "", str(key).lower()) in _SECRET_KEYS
+            else sanitize_data(item)
+            for key, item in value.items()
+        }
+    if isinstance(value, (list, tuple)):
+        return [sanitize_data(item) for item in value]
+    if isinstance(value, str):
+        # Structured JSON embedded in logs or tool responses needs the same treatment.
+        import json
+        try:
+            parsed = json.loads(value)
+        except (ValueError, TypeError):
+            parsed = None
+        if isinstance(parsed, (dict, list)):
+            return json.dumps(sanitize_data(parsed), ensure_ascii=False)
+        return redact_secrets(value)[0]
+    if value is None or isinstance(value, (bool, int, float)):
+        return value
+    raise TypeError(f"Unsupported value in sanitized data: {type(value).__name__}")
 
 
 def scan_file_for_secrets(path: str | Path) -> list[dict[str, Any]]:

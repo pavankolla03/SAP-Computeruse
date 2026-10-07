@@ -14,7 +14,8 @@ from typing import Any
 from sap_cua.evaluation.sapbench.generator import generate_benchmark_suite
 from sap_cua.model import get_model
 from sap_cua.sap.mocks import get_mock_environment
-from sap_cua.types import BenchmarkResult, ModelRequest, ModelResponse, TaskDefinition
+from sap_cua.types import BenchmarkResult, SAPAction, TaskDefinition, Trajectory
+from sap_cua.agent.agent_loop import AgentLoop
 from sap_cua.services.verifier import run_verifier
 
 logger = logging.getLogger(__name__)
@@ -37,14 +38,17 @@ class BenchmarkRunner:
 
     def __init__(self, config: BenchmarkConfig | None = None) -> None:
         self.config = config or BenchmarkConfig()
-        self.env = get_mock_environment() if self.config.use_mocks else None
+        if not self.config.use_mocks:
+            raise ValueError("Live benchmark environments are not implemented")
+        self.env = get_mock_environment()
         self.model = get_model(self.config.model_type)
         self.results: list[BenchmarkResult] = []
         self._step_limit = self.config.max_steps
 
     def run(self) -> dict[str, Any]:
         """Run the full benchmark suite."""
-        tasks = generate_benchmark_suite({1: 3, 2: 3, 3: 2, 4: 1, 5: 1})
+        self.results.clear()
+        tasks = generate_benchmark_suite({1: 3, 2: 3, 3: 2, 4: 1, 5: 1}, seed=self.config.seed)
         logger.info("Running SAPBench %s: %d tasks, %d runs each", self.config.suite, len(tasks), self.config.runs_per_task)
         for task in tasks:
             for run_idx in range(self.config.runs_per_task):
@@ -56,43 +60,48 @@ class BenchmarkRunner:
 
     def _run_task(self, task: TaskDefinition, run_idx: int) -> BenchmarkResult:
         run_id = f"run-{task.task_id}-{run_idx:02d}"
-        logger.info("Running %s (run %d/%d)", task.task_id, run_idx + 1, self.config.runs_per_task)
-        self.model.reset()
-        if self.env:
-            self.env.reset()
-        actions_taken: list[Any] = []
-        success = False
-        error = None
-        start = time.time()
+        self.env.reset()
+        start = time.monotonic()
+        outcome: dict[str, Any] = {}
         try:
-            for step in range(self._step_limit):
-                response = self.model.act(
-                    instruction=task.instruction,
-                    image=None,
-                    history=[a.model_dump() if hasattr(a, "model_dump") else {} for a in actions_taken],
-                )
-                actions_taken.append(response)
-                if response.gui_action:
-                    logger.debug("Step %d: %s at (%.2f, %.2f)", step, response.gui_action.type,
-                                 response.gui_action.x or 0, response.gui_action.y or 0)
-                if response.confidence > 0.9 and step >= 2:
-                    success = True
-                    break
+            self._setup(task.setup)
+            loop = AgentLoop(model=self.model, max_steps=self._step_limit,
+                             sap_env=self.env, max_duration_ms=self.config.max_duration_ms)
+            outcome = loop.run(task.instruction, verification=task.verify,
+                               reset_environment=False)
         except Exception as exc:
-            error = str(exc)
-            logger.error("Task %s failed: %s", task.task_id, exc)
-        duration_ms = int((time.time() - start) * 1000)
-        return BenchmarkResult(
-            task_id=task.task_id,
-            model=self.config.model_type,
-            run_id=run_id,
-            success=success,
-            steps_taken=len(actions_taken),
-            max_steps=self._step_limit,
-            duration_ms=duration_ms,
-            actions=[],
-            error=error,
+            outcome = {"success": False, "error": str(exc), "actions": [], "steps": 0,
+                       "verification": {"success": False, "reason": str(exc)}}
+        finally:
+            # This is a disposable in-memory environment. Reset is its cleanup contract.
+            self.env.reset()
+        duration_ms = int((time.monotonic() - start) * 1000)
+        steps = outcome.get("actions", [])
+        trajectory = Trajectory(
+            task_id=task.task_id, task=task.instruction,
+            environment={"backend": "mock", "difficulty": task.difficulty},
+            steps=steps, final_verification=outcome.get("verification", {}),
+            success=outcome.get("success") is True, actions_count=len(steps),
+            duration_ms=duration_ms, model=self.config.model_type,
         )
+        return BenchmarkResult(
+            task_id=task.task_id, model=self.config.model_type, run_id=run_id,
+            success=outcome.get("success") is True, steps_taken=len(steps),
+            max_steps=self._step_limit, duration_ms=duration_ms,
+            actions=[SAPAction(**s["action_data"]) for s in steps if "action_data" in s],
+            trajectory=trajectory, error=outcome.get("error"),
+        )
+
+    def _setup(self, setup: dict[str, Any] | None) -> None:
+        if not setup:
+            return
+        kind = setup.get("type")
+        if kind == "create_package":
+            result = self.env.create_package(setup["name"])
+        else:
+            raise ValueError(f"Unsupported benchmark setup: {kind}")
+        if result.get("success") is not True:
+            raise ValueError(f"Benchmark setup failed: {result.get('error')}")
 
     def _summarize(self) -> dict[str, Any]:
         if not self.results:
@@ -108,6 +117,9 @@ class BenchmarkRunner:
                 by_level[level]["success"] += 1
         return {
             "suite": self.config.suite,
+            "backend": "mock",
+            "evaluation_status": "development_only",
+            "seed": self.config.seed,
             "model": self.config.model_type,
             "total_runs": total,
             "successes": successes,

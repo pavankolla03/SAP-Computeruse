@@ -1,44 +1,15 @@
-# SAP-CUA Status
+# SAP-CUA status — 7 October 2026
 
-## Current Phase: Phase 3-4 — SAP Connector + Executor Router (tests passing, code complete)
+Current stage: prototype audited; first execution/data-integrity repair implemented.
 
-## Test Results
-- **66/66 tests passing** (2025-10-06)
-- All 8 test files pass: actions, benchmark, mocks, model, router, security, types, verifier
+The software is not yet a working SAP-specialized trained model or a live SAP automation product.
 
-## Completion Status
+- Baseline: 265 tests passed, 17 errored.
+- After repair: 315 tests passed; API and mock benchmark smoke checks passed.
+- Shared API/agent/benchmark loop executes supported mock actions and requires independent task verification.
+- Structured recorder/trajectory persistence is sanitized; image-pixel sanitization is still missing.
+- Local orchestrator and trajectory storage contracts are repaired and covered by tests.
+- OpenCUA/UI-TARS adapters remain placeholders. Training modules still simulate training and do not produce usable learned weights.
+- Live SAP/executor integration, model inference, authentic data, training, evaluation and production security remain incomplete.
 
-| Component | Status |
-|-----------|--------|
-| **Project structure** | Complete |
-| **SAP Semantic Action Language** | Complete (40+ typed actions) |
-| **Model abstraction** | Complete (OpenCUA, UI-TARS, Mock) |
-| **SAP Mock Environment** | Complete (full in-memory Integration Suite) |
-| **Executor Router** | Complete (API→MCP→Playwright→GUI→Terminal→Code) |
-| **7 programmatic verifiers** | Complete |
-| **SAPBench generator** | Complete (5 difficulty levels, 30+ task templates) |
-| **Secret redaction engine** | Complete (10 pattern types) |
-| **Training modules** | Skeleton complete, needs GPU validation |
-| **Inference FastAPI server** | Complete |
-| **Recorder session processor** | Complete |
-| **Docker Compose** | Complete (8 services) |
-| **Makefile** | Complete |
-| **CI/CD** | Complete (GitHub Actions) |
-| **Tests** | 66 tests across 8 files |
-| **Git repository** | Needs manual init (git init blocked by permissions) |
-| **GitHub repo** | Needs user to create |
-| **GPU training** | Needs cloud provider API key |
-
-## Blockers
-- B-001: Git init in project directory — run `rm -rf .git && git init` manually
-- B-002: Create GitHub repo `SAP_computer_use` and push
-- B-003: SAP sandbox credentials for live testing (mock environment works)
-- B-004: GPU provider for LoRA/RL training
-
-## Next Steps
-1. Manual git init + GitHub push
-2. Validate training pipeline on GPU
-3. Generate 100+ benchmark tasks
-4. Build recorder web UI
-5. Collect 50-100 human SAP demonstrations
-6. Run first SFT training (grounding LoRA)
+See [the audit](AUDIT_2026-10-07.md) for evidence, limitations and the phased implementation plan.

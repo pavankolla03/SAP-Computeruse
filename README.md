@@ -1,4 +1,6 @@
 # SAP-CUA
+
+> Audited 7 October 2026: this is a prototype. The first integrity repair passes 315 local tests. Real OpenCUA inference, training, live SAP execution and production readiness remain incomplete. See [the audit](docs/AUDIT_2026-10-07.md).
 ## SAP-Native 7B Computer-Use Agent
 
 SAP-CUA is a research platform and production-oriented multimodal computer-use agent
@@ -41,7 +43,7 @@ sap-cua/
 │   ├── services/        # Router, inference, verifier, orchestrator
 │   ├── training/        # SFT, QLoRA, RL training pipelines
 │   └── types/           # Pydantic models, SAP action language
-├── tests/               # 80 unit tests
+├── tests/               # 315 local tests
 ├── infra/docker/        # Docker configuration
 └── docs/                # Architecture, strategy, decisions
 ```
@@ -76,9 +78,15 @@ The agent selects the best execution method automatically:
 
 ### Test Results
 
+The audited baseline had 265 passing tests and 17 errors. The first repair passes
+315 tests in an isolated Python 3.12 environment with `src` on `PYTHONPATH`.
+These validate local software behavior; they do not demonstrate trained-model or live SAP capability.
+
+The quick-start, installation, CLI and Make targets above still need the reproducibility
+repairs listed in the roadmap. The tested direct invocation is:
+
 ```bash
-$ make test
-============================= 80 passed in 0.18s ==============================
+PYTHONPATH=src python -m pytest tests/ -q
 ```
 
 ### Documentation
@@ -96,6 +104,5 @@ MIT (matches OpenCUA base). See [docs/MODEL_LICENSE_REVIEW.md](docs/MODEL_LICENS
 
 ### Status
 
-**Phase 3-4**: SAP connector mock + executor router complete.
-80/80 tests passing. 101 benchmark templates generated.
-See [docs/STATUS.md](docs/STATUS.md) for current state.
+Prototype audited; execution/data-integrity repair implemented.
+See [docs/STATUS.md](docs/STATUS.md) and [docs/ROADMAP.md](docs/ROADMAP.md).

@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 from typing import Any
 
-from sap_cua.sap.actions import get_action_definition
+from sap_cua.sap.actions import get_action_definition, validate_action_arguments
 from sap_cua.types import ExecutorType, RiskLevel, SAPAction
 
 logger = logging.getLogger(__name__)
@@ -70,46 +70,43 @@ class ExecutorRouter:
 
     def execute(
         self,
-        intent: str,
+        intent: str | SAPAction,
         context: Any | None = None,
         gui_action: Any | None = None,
     ) -> dict[str, Any]:
-        """Execute an action by routing to the appropriate executor.
+        """Execute against an explicitly supplied mock environment.
 
-        context is an ExecutorContext; sap_env is read from it if available.
+        Routing preferences alone do not prove a live executor is available.
+        Live API/GUI/MCP adapters will be registered in the next runtime phase.
         """
-        from sap_cua.types import SAPAction
-        from sap_cua.sap.actions import get_action_definition
-        action = SAPAction(
-            intent=intent,
-            executor=ExecutorType.GUI,
-            arguments=getattr(context, "arguments", {}) or {},
-            expected_state="",
+        action = intent if isinstance(intent, SAPAction) else SAPAction(
+            intent=intent, executor=ExecutorType.GUI,
+            arguments=getattr(context, "args", {}) or {},
+            gui_action=gui_action, expected_state="",
         )
-        if context and hasattr(context, "args"):
-            action.arguments = context.args or {}
+        errors = validate_action_arguments(action.intent, action.arguments)
+        if errors:
+            return {"success": False, "error": "; ".join(errors)}
         routed = self.route(action)
         sap_env = getattr(context, "sap_env", None)
-        if sap_env is None and hasattr(self, "api_available"):
-            sap_env = getattr(self, "_sap_env", None)
-        if sap_env is not None and hasattr(sap_env, "execute_action"):
-            try:
-                args = action.arguments or {}
-                if not args and context is not None and hasattr(context, "task"):
-                    args = {"task": context.task}
-                result = sap_env.execute_action(intent, args)
-                return {
-                    "success": result.get("success", True),
-                    "executor": routed.executor,
-                    "result": result,
-                }
-            except Exception as exc:
-                return {"success": False, "error": str(exc), "executor": routed.executor}
-        return {
-            "success": True,
-            "executor": routed.executor,
-            "result": {"mock": True, "action": intent},
-        }
+        if sap_env is None:
+            return {"success": False, "executor": routed.executor,
+                    "error": "No executor is connected"}
+        from sap_cua.sap.mocks import SAPMockEnvironment
+        if not isinstance(sap_env, SAPMockEnvironment):
+            return {"success": False, "error": "Live executor integration is not implemented"}
+        try:
+            result = sap_env.execute_action(action.intent, action.arguments)
+            return {
+                "success": result.get("success") is True,
+                "executor": routed.executor,
+                "backend": "mock",
+                "result": result,
+                "error": result.get("error"),
+            }
+        except Exception as exc:
+            return {"success": False, "error": str(exc),
+                    "executor": routed.executor, "backend": "mock"}
 
 
 class ExecutorContext:

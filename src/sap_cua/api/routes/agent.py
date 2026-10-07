@@ -1,25 +1,23 @@
-"""Agent run endpoint."""
+"""Agent API using the same execution and verification loop as evaluation."""
 
 from __future__ import annotations
 
-import logging
-import time
+import uuid
 from typing import Any
 
 from fastapi import APIRouter
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
-from sap_cua.model import get_model
-from sap_cua.services.executor_router import ExecutorRouter
+from sap_cua.agent.agent_loop import AgentLoop
 
-logger = logging.getLogger(__name__)
 router = APIRouter()
 
 
 class RunRequest(BaseModel):
-    instruction: str
-    max_steps: int = 10
+    instruction: str = Field(min_length=1)
+    max_steps: int = Field(10, ge=1, le=100)
     model_type: str = "mock"
+    verification: dict[str, Any] | None = None
 
 
 class RunResponse(BaseModel):
@@ -27,26 +25,17 @@ class RunResponse(BaseModel):
     success: bool
     steps: list[dict[str, Any]]
     duration_ms: int
+    verification: dict[str, Any]
+    backend: str
+    error: str | None = None
 
 
 @router.post("/run", response_model=RunResponse)
-async def run_agent(req: RunRequest) -> RunResponse:
-    model = get_model(req.model_type)
-    router_exec = ExecutorRouter(api_available=False)
-    start = time.time()
-    steps: list[dict[str, Any]] = []
-    model.reset()
-    success = False
-    for step_num in range(req.max_steps):
-        response = model.act(
-            instruction=req.instruction,
-            image=None,
-            history=steps,
-        )
-        action_data = response.model_dump() if hasattr(response, "model_dump") else response
-        steps.append(action_data)
-        if response.confidence > 0.9 and step_num >= 2:
-            success = True
-            break
-    duration_ms = int((time.time() - start) * 1000)
-    return RunResponse(task_id="task-001", success=success, steps=steps, duration_ms=duration_ms)
+def run_agent(req: RunRequest) -> RunResponse:
+    # Synchronous handler runs in FastAPI's thread pool instead of blocking its event loop.
+    loop = AgentLoop(model=req.model_type, max_steps=req.max_steps)
+    result = loop.run(req.instruction, verification=req.verification)
+    return RunResponse(task_id=str(uuid.uuid4()), success=result["success"],
+                       steps=result["actions"], duration_ms=result["duration_ms"],
+                       verification=result["verification"], backend=result["backend"],
+                       error=result["error"])
