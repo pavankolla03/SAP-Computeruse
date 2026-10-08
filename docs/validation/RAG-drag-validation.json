@@ -1,0 +1,7 @@
+{
+  "fixture": "synthetic process canvas",
+  "live_sap": false,
+  "success": true,
+  "strategy": "dom_drag",
+  "verified": true
+}

@@ -1,17 +1,23 @@
-# Implementation sequence
+# Next gates
 
-1. Preserve/audit source; repair false-success paths and trajectory sanitization — done.
-2. Installable local workbench, scripted sandbox, persistent runs — implemented.
-3. Actual OpenCUA preprocessing/inference and SFT/QLoRA code — implemented;
-   full checkpoint loads locally; usable full inference and CUDA training remain unvalidated.
-4. Connect scoped SAP tenant and API verifiers; validate artifact upload/deployment,
-   functional responses, fresh MPL correlation and resource cleanup.
-5. Extend the origin-scoped image-conditioned browser loop, executor bindings and recorder UX,
-   recovery cases and resettable SAPWorld tasks. Build a reviewed dataset.
-6. Train grounding/trajectory/recovery adapters, run held-out SAPBench with family
-   split controls, compare model-only and hybrid baselines at equal budgets.
-7. Promote only measured checkpoints; complete registry provenance, cost reservations,
-   prompt-injection red-team suite and multi-user security before deployment.
-8. Add actual RL/self-play only after reward/verifier reliability is measured.
+1. Connect a DEV tenant read-only. Verify tenant identity, OAuth scope, package,
+   artifact and MPL access. Keep credentials outside prompts and run records.
+2. Inspect an approved exported iFlow and its externalized parameters. Instantiate
+   the canonical patterns against its real XML contract; validate upload/readback.
+3. Register tenant-tested API/DOM bindings in HybridRouter. Allow only run-owned
+   DEV artifacts. Poll asynchronous deployment; correlate a fresh functional test
+   and MPL message before declaring success. Never repeat an uncertain write.
+4. Collect approved SAP editor screenshots and DOM anchors. Validate search/add,
+   actual canvas placement and exceptional dialogs. Configure bounded CUA fallback
+   on suitable hardware; measure actual latency and cost.
+5. Add real schema/mapping fixtures, test-approved Groovy/XSLT, layered ProcessDirect,
+   API Management and Event Mesh contracts. Reject unsupported requests until then.
+6. Establish 50 then 100+ held-out tenant tasks, perturbations and recovery cases.
+   Compare providers where authorized. Measure trajectory reuse and retrieval
+   relevance without contaminating evaluation data.
+7. Add hosted identity/RBAC, database RLS, least-privilege roles, tenant audit exports,
+   retention/deletion, collector integration and resource quotas before multiuser use.
+8. Revisit focused fine-tuning only if these measured gates leave a residual weakness.
 
-No phase is complete solely because mock unit tests pass.
+The current local application is a tested foundation, not completion of these live
+SAP and commercial deployment gates.

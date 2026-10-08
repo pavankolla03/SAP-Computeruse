@@ -52,6 +52,9 @@ def test_write_timeout_is_never_retried():
     def handler(request):
         if request.url.host == "auth.example":
             return httpx.Response(200, json={"access_token": "test"})
+        if request.headers.get('X-CSRF-Token') == 'Fetch':
+            return httpx.Response(200,headers={'X-CSRF-Token':'test-csrf'},json={'d':{'results':[]}})
+        assert request.headers['X-CSRF-Token']=='test-csrf'
         calls.append(request)
         raise httpx.ReadTimeout("credentials should not escape")
 
@@ -83,3 +86,27 @@ def test_odata_identifier_injection_blocked():
     with client(lambda _: pytest.fail("network called")) as api:
         with pytest.raises(ValueError):
             api.get_package("x')/Other('")
+
+
+def test_csrf_cookie_and_token_precede_mutation():
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        if request.url.host=='auth.example':return httpx.Response(200,json={'access_token':'test'})
+        if request.method=='GET':
+            assert request.headers['X-CSRF-Token']=='Fetch'
+            return httpx.Response(200,headers={'X-CSRF-Token':'csrf-value','Set-Cookie':'session=fixture; Path=/; Secure'},json={'d':{'results':[]}})
+        assert request.headers['X-CSRF-Token']=='csrf-value'
+        assert 'session=fixture' in request.headers['Cookie']
+        return httpx.Response(201,json={'d':{'Id':'TEST'}})
+    with client(handler,allow_mutations=True) as api:assert api.create_package('TEST')['success']
+    assert len(calls)==3
+
+
+def test_missing_csrf_prevents_mutation():
+    calls=[]
+    def handler(request):
+        calls.append(request)
+        return httpx.Response(200,json={'access_token':'test'} if request.url.host=='auth.example' else {})
+    with client(handler,allow_mutations=True) as api:assert not api.create_package('TEST')['success']
+    assert all(r.method=='GET' or r.url.host=='auth.example' for r in calls)

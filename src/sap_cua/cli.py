@@ -11,12 +11,17 @@ def main() -> int:
     from dotenv import load_dotenv
 
     load_dotenv(Path.cwd() / ".env", override=False)
+    import sys
+    if len(sys.argv)>1 and sys.argv[1]=='rag':
+        from sap_cua.rag.cli import main as rag_main
+        return rag_main(sys.argv[2:])
     parser = argparse.ArgumentParser(prog="sap-cua")
     commands = parser.add_subparsers(dest="command", required=True)
     serve = commands.add_parser("serve", help="Open the local workbench")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--data-dir", default=os.getenv("SAP_CUA_DATA_DIR", ".sap-cua"))
+    commands.add_parser("rag", help="Initialize, ingest, search, plan, run, or benchmark the RAG workspace")
     commands.add_parser("doctor", help="Report capabilities and remaining setup")
     download = commands.add_parser("download-model", help="Download the pinned OpenCUA checkpoint")
     download.add_argument("--destination", default=".models/OpenCUA-7B")
@@ -33,13 +38,6 @@ def main() -> int:
     ground.add_argument(
         "--model-path", default=os.getenv("SAP_CUA_MODEL_PATH", ".models/OpenCUA-7B")
     )
-    train = commands.add_parser("train", help="Run real LoRA/QLoRA SFT on a local CUDA device")
-    train.add_argument("stage", choices=["sft", "qlora"])
-    train.add_argument("--dataset", required=True)
-    train.add_argument("--model-path", required=True)
-    train.add_argument("--output", required=True)
-    train.add_argument("--max-steps", type=int, default=100)
-    train.add_argument("--validate-only", action="store_true")
     bench = commands.add_parser("benchmark", help="Run the existing mock SAPBench baseline")
     bench.add_argument("--levels", default="1,2,3,4,5")
     inspect = commands.add_parser("inspect", help="Inspect a sanitized JSON artifact")
@@ -96,20 +94,6 @@ def main() -> int:
             with Image.open(args.image) as image:
                 result = OpenCUARuntime(args.model_path).ground(image, args.instruction)
             print(result.model_dump_json(indent=2))
-        elif args.command == "train":
-            from sap_cua.training.sft import SFTConfig, SFTTrainer
-
-            config = SFTConfig(
-                base_model=args.model_path,
-                dataset_path=args.dataset,
-                output_dir=args.output,
-                max_steps=args.max_steps,
-                use_qlora=args.stage == "qlora",
-            )
-            trainer = SFTTrainer(config)
-            print(
-                json.dumps(trainer.dry_run() if args.validate_only else trainer.train(), indent=2)
-            )
         elif args.command == "benchmark":
             from sap_cua.evaluation.sapbench.runner import BenchmarkRunner, BenchmarkConfig
 

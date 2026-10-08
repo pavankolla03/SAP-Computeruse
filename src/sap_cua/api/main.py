@@ -22,7 +22,7 @@ from sap_cua.services.workbench import (
 )
 
 
-def create_app(data_dir: Path | None = None, *, test_mode: bool = False) -> FastAPI:
+def create_app(data_dir: Path | None = None, *, test_mode: bool = False, rag_service=None) -> FastAPI:
     directory = data_dir or Path(os.getenv("SAP_CUA_DATA_DIR", ".sap-cua"))
     token = secrets.token_urlsafe(32)
     web = Path(__file__).parents[1] / "web"
@@ -31,10 +31,12 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False) -> Fast
     async def lifespan(app):
         app.state.store = RunStore(directory)
         app.state.store.recover_interrupted()
+        from sap_cua.engineering.service import RAGService
+        app.state.rag = rag_service if rag_service is not None else RAGService.from_environment(app.state.store)
         yield
 
     app = FastAPI(
-        title="SAP-CUA Workbench", version="0.2.0", lifespan=lifespan, docs_url=None, redoc_url=None
+        title="SAP-CUA Workbench", version="0.3.0", lifespan=lifespan, docs_url=None, redoc_url=None
     )
     hosts = ["127.0.0.1", "localhost", "[::1]"] + (["testserver"] if test_mode else [])
 
@@ -76,7 +78,7 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False) -> Fast
     @app.get("/health")
     @app.get("/health/")
     def health():
-        return {"status": "healthy", "version": "0.2.0"}
+        return {"status": "healthy", "version": "0.3.0"}
 
     @app.get("/api/capabilities")
     def status():
@@ -88,12 +90,12 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False) -> Fast
 
     @app.get("/api/runs")
     def runs(request: Request):
-        return request.app.state.store.list()
+        return [run for run in request.app.state.store.list() if "customer" not in run]
 
     @app.get("/api/runs/{run_id}")
     def run(run_id: str, request: Request):
         result = request.app.state.store.get(run_id)
-        if result is None:
+        if result is None or "customer" in result:
             raise HTTPException(404, "Run not found")
         return result
 
@@ -104,6 +106,8 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False) -> Fast
         except ValueError as exc:
             raise HTTPException(422, str(exc)) from exc
 
+    from sap_cua.api.routes.rag import router as rag_router
+    app.include_router(rag_router, prefix="/api/rag")
     return app
 
 

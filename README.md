@@ -1,128 +1,100 @@
-# SAP-CUA
+# SAP Engineering Studio — RAG V1
 
-A local workbench and research runtime for an SAP-specialized computer-use agent.
-OpenCUA-7B is the base model. This repository does **not yet contain a SAP-fine-tuned
-checkpoint or evidence of superiority to other agents**.
+A local SAP Integration Suite engineering workbench. Describe a supported
+integration, retrieve scoped knowledge, inspect a semantic plan, execute it in a
+fresh simulator, and retain independently verified trajectories as knowledge.
+**No fine-tuning or 7B model is required.**
 
-## Run the application
+`Finetune` preserves the previous implementation. `RAG` contains this application.
 
-Python 3.11 or 3.12 is required. The web UI has no Node dependency.
+## Run
 
-```sh
-python3 -m venv .venv
-. .venv/bin/activate
-pip install -e '.[dev]'
-sap-cua serve
-```
-
-Open http://127.0.0.1:8000. Click **Run workflow** to create a package, configure a
-flow and verify deployment in the isolated local sandbox. Each run has a fresh
-sandbox, saved action results and independent state verification. This example
-is a scripted workflow; it is not a model benchmark or a live SAP deployment.
+Python 3.11 or 3.12, PostgreSQL 17 with pgvector, and ~600 MB for CPU retrieval
+models are needed. A GPU is not needed. The first initialization downloads text
+embedding and reranking assets; visual retrieval downloads its model when used.
 
 ```sh
-sap-cua run --example
-sap-cua doctor
-pytest -q
-python -m build
+python -m pip install uv==0.12.23
+uv sync --frozen --extra dev
+cp .env.example .env
+# Configure SAP_CUA_DATABASE_URL for your local PostgreSQL database.
+uv run sap-cua rag init
+uv run sap-cua serve --port 8765
 ```
 
-## Model inference
+Open http://127.0.0.1:8765. `rag init` creates pgvector/schema and incrementally
+indexes the included original engineering notes. The local CLI reads `.env`.
+Keep database passwords URL-encoded in the DSN and never commit populated secrets.
+
+Docker alternative: set `SAP_CUA_DB_PASSWORD` to a URL-safe random value in `.env`,
+then `docker compose up --build`. The workbench listens on localhost:8000; the
+database has no published host port. Compose initializes knowledge before serving.
+The local desktop setup was tested natively; Compose integration is supplied for
+portability, with separate database and container-startup checks in CI.
+
+## Examples
+
+- Create HTTPS → Content Modifier → Router → OData V4 with error handling.
+- Create SFTP to OData V4 integration.
+- Diagnose a failing flow with HTTP 401.
+
+The planner is a conservative deterministic compiler for supported patterns.
+Diagnostics are not automatic repairs. Unsupported mapping/code/ProcessDirect
+requirements remain blocked. Sandbox results do not prove that SAP accepted an
+artifact or that an external business transaction succeeded.
 
 ```sh
-pip install -e '.[ml,browser]'
-sap-cua browser-install
-sap-cua download-model --destination .models/OpenCUA-7B
-sap-cua ground screenshot.png 'Click the Deploy button.' --model-path .models/OpenCUA-7B
+uv run sap-cua rag search "OData HTTP 401 OAuth credentials"
+uv run sap-cua rag run "Create HTTPS Content Modifier Router to OData V4"
+uv run sap-cua rag ingest approved-knowledge.jsonl
+uv run sap-cua rag benchmark
+uv run pytest -q
 ```
 
-The download pins `xlangai/OpenCUA-7B` to revision
-`a2efb7d2b104d477a4a2666a357e79550a28aafc`, including its custom model/tokenizer code.
-Only load checkpoints and Python model files you trust. `ground` predicts an action;
-it does not execute it. Coordinates are normalized from the resized image frame.
-Generated Python is parsed through a literal action allowlist, never executed.
-Unrecognized or malformed output fails explicitly. Confidence is not calibrated.
+## Implemented
 
-A CUDA GPU is recommended. CPU inference uses a 6 GiB resident-weight budget with
-disk offload; this saves memory but can be very slow. The 16 GB development Mac is
-not a suitable full 7B training machine. `SAP_CUA_MODEL_PATH` selects the checkpoint.
-An explicitly configured `SAP_CUA_INFERENCE_URL` can point to an OpenAI-compatible
-OpenCUA server; screenshots are then sent to that server. No remote inference
-service or paid GPU is provisioned automatically.
+- Strict knowledge schema, content hashes, embedding asset fingerprints, incremental
+  versions and domain routing; PostgreSQL full-text/pgvector candidate fusion,
+  CPU reranking, bounded context and source provenance.
+- Trusted customer/tenant scope filters before retrieval; scoped run history,
+  viewer/engineer/admin contracts; approved tenant naming and credential-alias facts.
+- Typed semantic action arguments, dependency checks, budgets, atomic run claims,
+  separate action and state verification, bounded transient sandbox recovery.
+- Automatic sanitized successful-trajectory ingestion; scoped CLIP screenshot
+  retrieval with approved capture, masking regions and metadata stripping.
+- Capability-based hybrid router and optional OpenCUA provider/fallback interfaces.
+  Paid provider calls require explicitly configured cost upper bounds.
+- Existing SAP API client with OAuth, CSRF/cookie preflight, known resource paths,
+  explicit mutation permission and no automatic retry of uncertain writes.
+- Playwright origin isolation, dynamic DOM geometry and real pointer drag/drop;
+  optional bounded vision escalation with a caller-owned action authorizer.
+- Nine canonical pattern blueprints and a hash-approved exported-iFlow ZIP
+  parameterizer with XML/XXE/path/size checks. Blueprints are not SAP-native exports.
+- OpenTelemetry semantic action spans/counters, structured run evidence, local
+  authenticated-session dashboard, 20-task simulator ablations and retrieval metrics.
 
-## Training
+## Boundaries
 
-LoRA and 4-bit QLoRA use actual Transformers/PEFT optimization with image tensors,
-masked prompt labels, language-only adapters, validation, checkpoints and dataset
-fingerprints. There is no automatic synthetic-data fallback or fabricated loss.
+The dashboard deliberately executes only the simulator. A real DEV tenant,
+approved iFlow exports, tenant-specific selectors, capability/permission checks
+and functional test contracts are required to enable live end-to-end execution.
+API operations and the browser runtime are available as explicit integration
+components; their live orchestration is not yet tenant validated.
 
-```sh
-sap-cua train sft --model-path .models/OpenCUA-7B --dataset data/examples.jsonl \
-  --output checkpoints/run-001 --validate-only
-# Run on an authorized, provisioned CUDA machine:
-sap-cua train qlora --model-path .models/OpenCUA-7B --dataset data/examples.jsonl \
-  --output checkpoints/run-001 --max-steps 100
-```
+The included 38 notes are original engineering guidance, not a complete SAP
+manual. Approved JSONL, text, Markdown, HTML and allowlisted public HTTPS sources
+can be ingested through the ingestion library. Retrieved content never supplies
+policy, code, credentials or executor selectors.
 
-Install `.[ml,qlora]` for CUDA QLoRA. No training is launched by the web UI.
-Each JSONL row uses this schema (image paths are relative to the dataset directory):
+Local role and tenant scope come from trusted configuration, not request bodies.
+This is not a hosted multiuser authentication system. Use a least-privilege DB role,
+external identity provider, access audit and database row-level isolation before
+commercial multiuser hosting. The local PostgreSQL developer role is for local use.
 
-```json
-{"image_path":"images/001.png","instruction":"Click Deploy","response":"pyautogui.click(140, 140)","family":"deployment-a","split":"train","verified":true,"image_sanitized":true,"source":"human"}
-```
+Screenshot masking covers supplied regions; arbitrary screen secrets require an
+approved capture policy. No automatic claim of perfect visual redaction is made.
+OTel instrumentation is active; attach a collector/exporter through the SDK for
+centralized telemetry. Default metric snapshots are local and contain no task text.
 
-Provide nonempty `train` and `validation` splits. A task family or identical screenshot
-cannot cross splits. Action coordinates must match the processor's resized image.
-The dataset author must actually verify the action and review/redact image secrets
-before setting those booleans. Supported sources: `human`, `validated_teacher`,
-`sandbox`. Sandbox examples must remain identifiable as synthetic. Automatic image
-secret detection is not complete. Text secret checks are heuristic, not a guarantee.
-
-## SAP and executor boundaries
-
-The OAuth API client supports package operations, ZIP iFlow upload, deployment,
-runtime status and MPL reads using Integration Suite resource names. It requires
-`SAP_API_BASE_URL`, `SAP_TOKEN_URL`, `SAP_CLIENT_ID`, `SAP_CLIENT_SECRET` from the
-environment. Keep secrets outside source control. Client mutations default to denied;
-set `allow_mutations=True` only inside a separately authorized application context.
-Tenant validation and CSRF behavior still need a real development tenant.
-
-The hybrid router accepts explicitly registered executor bindings and a trusted
-authorization callback. It derives risk from the DSL, not model-supplied labels,
-and does not retry a write through another executor after a timeout. Playwright
-uses a fresh browser, an explicit origin allowlist, masked sensitive fields, blocked
-out-of-scope network requests, and bounded in-page actions. Native desktop control,
-MCP connections and arbitrary code are not enabled in the workbench.
-
-The web UI binds to loopback, checks Host and Origin, uses an HTTP-only local session,
-and requires a custom header for writes. It is a local single-user tool, not an
-internet-facing multi-user service. The Docker compose port also binds to loopback.
-
-## Evaluation and remaining work
-
-`sap-cua benchmark --levels 1,2` exercises the legacy SAPBench mock harness.
-There are 101 task templates, but many are not executable end to end yet. Template
-count and mock results are not evidence of real SAP or model performance.
-
-See [status](docs/STATUS.md), [blockers](docs/BLOCKERS.md),
-[phase roadmap](docs/ROADMAP.md), and [the original audit](docs/AUDIT_2026-10-07.md).
-RL reward utilities, recovery/transition builders, model registry, and other legacy
-modules are preserved for further work; several are scaffolds. RL optimization is
-explicitly unavailable instead of returning fictional training metrics.
-
-## Local browser fixture and data pipeline
-
-With the server running, open `/assets/sapworld.html` to try the simplified package,
-flow, deployment and test-message fixture. It distinguishes deployment from message
-processing and resets without touching SAP. Collect actual screenshots and verified
-click targets with:
-
-```sh
-python scripts/collect_sapworld.py --url http://127.0.0.1:8000 --output .sap-cua/examples
-```
-
-This produces 48 examples, recorded state evidence and a dataset fingerprint. The
-split separates synthetic fixture variants; it is **not** a held-out SAP capability
-benchmark and should not be used to claim generalization. The generic browser loop
-accepts a model, an origin-scoped browser, caller-owned action authorization and an
-independent verifier. It stops on denied actions, failure, or budget exhaustion.
+See [audit](docs/EXISTING_IMPLEMENTATION_AUDIT.md), [status](docs/STATUS.md),
+[roadmap](docs/ROADMAP.md), and [fine-tuning decision](docs/FINE_TUNING_DECISION.md).

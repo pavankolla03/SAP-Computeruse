@@ -99,6 +99,27 @@ class RunStore:
             rows = db.execute("SELECT body FROM runs ORDER BY created DESC LIMIT 100").fetchall()
         return [json.loads(row[0]) for row in rows]
 
+    def list_scope(self, customer: str, tenant: str) -> list[dict[str, Any]]:
+        with self.connect() as db:
+            rows = db.execute(
+                """SELECT body FROM runs WHERE json_extract(body,'$.customer')=?
+                   AND json_extract(body,'$.tenant')=? ORDER BY created DESC LIMIT 100""",
+                (customer, tenant),
+            ).fetchall()
+        return [json.loads(row[0]) for row in rows]
+
+    def claim_plan(self, run_id: str, customer: str, tenant: str) -> bool:
+        """Atomically prevent concurrent execution and replay of semantic plans."""
+        with self.connect() as db:
+            result = db.execute(
+                """UPDATE runs SET status='running',
+                   body=json_set(body,'$.status','running','$.owner_pid',?)
+                   WHERE id=? AND status='planned'
+                   AND json_extract(body,'$.customer')=? AND json_extract(body,'$.tenant')=?""",
+                (os.getpid(), run_id, customer, tenant),
+            )
+            return result.rowcount == 1
+
     def recover_interrupted(self) -> None:
         # A process restart never replays possibly completed actions.
         with self.connect() as db:

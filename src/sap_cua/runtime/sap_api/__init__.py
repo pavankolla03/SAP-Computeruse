@@ -62,6 +62,7 @@ class SAPAPIClient:
             )
         self.allow_mutations = allow_mutations
         self._client = httpx.Client(transport=transport, timeout=30, follow_redirects=False)
+        self._csrf = ""
         self._token = ""
         self._expires = 0.0
 
@@ -87,6 +88,7 @@ class SAPAPIClient:
                 f"SAP OAuth failed (HTTP {response.status_code}); response body withheld"
             )
         payload = response.json()
+        self._csrf = ""
         self._token = payload["access_token"]
         self._expires = time.monotonic() + max(0, float(payload.get("expires_in", 300)) - 30)
         return self._token
@@ -100,19 +102,26 @@ class SAPAPIClient:
                 "backend": "sap_api",
             }
         try:
+            headers = {'Authorization':'Bearer '+self._access_token(),'Accept':'application/json'}
+            if method != 'GET':
+                if not self._csrf:
+                    csrf_response = self._client.get(self.api_base+'/IntegrationPackages',
+                        headers={**headers,'X-CSRF-Token':'Fetch'},params={'$top':1})
+                    if csrf_response.status_code != 200 or not csrf_response.headers.get('X-CSRF-Token'):
+                        raise RuntimeError('CSRF preflight failed; mutation was not attempted')
+                    self._csrf = csrf_response.headers['X-CSRF-Token']
+                headers['X-CSRF-Token'] = self._csrf
             response = self._client.request(
                 method,
                 self.api_base + "/" + resource,
-                headers={
-                    "Authorization": "Bearer " + self._access_token(),
-                    "Accept": "application/json",
-                },
+                headers=headers,
                 json=body,
                 params=params,
             )
             # Acceptance of deployment is NOT proof the runtime reached STARTED.
             success = 200 <= response.status_code < 300
             if not success:
+                if response.status_code == 403:self._csrf = ""
                 return {
                     "success": False,
                     "data": None,

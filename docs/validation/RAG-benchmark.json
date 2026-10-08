@@ -1,0 +1,2382 @@
+{
+  "scope": "synthetic simulator only",
+  "live_sap": false,
+  "model_comparison": false,
+  "summary": {
+    "tools_only": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 18
+    },
+    "rag_plan_only": {
+      "tasks": 20,
+      "successes": 0,
+      "executed": 0,
+      "mean_ms": 192
+    },
+    "rag_tools": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 215
+    },
+    "rag_tools_trajectory": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 380
+    }
+  },
+  "retrieval": [
+    {
+      "query": "OData receiver fails with HTTP 401 OAuth credentials",
+      "expected": [
+        "error-401",
+        "oauth-alias"
+      ],
+      "retrieved": [
+        "error-401",
+        "oauth-alias",
+        "adapter-odatav4",
+        "trajectory-cf339f31c305",
+        "pattern-https_to_odata_v4"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "JMS queue retry asynchronous duplicate message handling",
+      "expected": [
+        "adapter-jms"
+      ],
+      "retrieved": [
+        "adapter-jms",
+        "adapter-eventmesh",
+        "pattern-jms_retry",
+        "trajectory-a4ee75800d6a",
+        "trajectory-c2cb1d566327"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "No ProcessDirect consumer DirectVmConsumerNotAvailableException",
+      "expected": [
+        "error-directvmconsumernotavailableexception",
+        "component-processdirect"
+      ],
+      "retrieved": [
+        "error-directvmconsumernotavailableexception",
+        "pattern-processdirect_layered",
+        "error-unknownhostexception",
+        "error-403",
+        "error-404"
+      ],
+      "recall_at_k": 0.5,
+      "mrr": 1.0,
+      "ndcg": 0.6131471927654584
+    },
+    {
+      "query": "Receiver 429 Retry-After rate limit",
+      "expected": [
+        "error-429"
+      ],
+      "retrieved": [
+        "error-429",
+        "trajectory-0f88c92b3c47",
+        "pattern-jms_retry",
+        "error-500",
+        "error-502"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "SFTP host key directory polling security",
+      "expected": [
+        "adapter-sftp"
+      ],
+      "retrieved": [
+        "adapter-sftp",
+        "pattern-sftp_to_odata",
+        "trajectory-8ffdc7288044",
+        "trajectory-1606b5d230ec",
+        "adapter-http"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "Verify a deployed flow processed a fresh test message using MPL correlation",
+      "expected": [
+        "mpl-correlation"
+      ],
+      "retrieved": [
+        "mpl-correlation",
+        "pattern-error_handling_standard",
+        "pattern-processdirect_layered",
+        "pattern-https_to_http",
+        "pattern-jms_retry"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "Insert a router with default route conditions",
+      "expected": [
+        "component-router"
+      ],
+      "retrieved": [
+        "component-router",
+        "trajectory-b8a18e1a9eec",
+        "trajectory-444b1ef7fee9",
+        "trajectory-4b7b9f05914b",
+        "trajectory-679995da0bc8"
+      ],
+      "recall_at_k": 1.0,
+      "mrr": 1.0,
+      "ndcg": 1.0
+    },
+    {
+      "query": "XML namespaces JSON mapping transformation fixture",
+      "expected": [
+        "xml-mapping",
+        "error-mapping_failure"
+      ],
+      "retrieved": [
+        "xml-mapping",
+        "pattern-jms_retry",
+        "trajectory-a4ee75800d6a",
+        "pattern-event_mesh_async",
+        "pattern-https_to_odata_v4"
+      ],
+      "recall_at_k": 0.5,
+      "mrr": 1.0,
+      "ndcg": 0.6131471927654584
+    }
+  ],
+  "runs": [
+    {
+      "task_id": "sapbench-v1-01",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 43,
+      "actions": 1,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-02",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 16,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-03",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 18,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-04",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 15,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-05",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 16,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-06",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 18,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-07",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 17,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-08",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 16,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-09",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 20,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-10",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 21,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-11",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 24,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-12",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 20,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-13",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 20,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-14",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 20,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-15",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 19,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-16",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 21,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-17",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 21,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-18",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 5,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-19",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 4,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-20",
+      "mode": "tools_only",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 4,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-01",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 85,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-processdirect_layered",
+        "pattern-error_handling_standard",
+        "pattern-event_mesh_async",
+        "pattern-jms_retry"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-02",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 164,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http",
+        "adapter-soap"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-03",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 156,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav2",
+        "adapter-odatav4",
+        "pattern-sftp_to_odata",
+        "pattern-https_to_http"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-04",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 168,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "pattern-https_to_http"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-05",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 158,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-sftp_to_odata",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav2",
+        "adapter-sftp"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-06",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 153,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-soap_to_rest",
+        "adapter-soap",
+        "pattern-processdirect_layered",
+        "pattern-event_mesh_async",
+        "pattern-jms_retry",
+        "adapter-http"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-07",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 152,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "adapter-jms",
+        "pattern-jms_retry",
+        "adapter-http",
+        "pattern-https_to_http",
+        "adapter-https",
+        "adapter-soap"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-08",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 158,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "adapter-eventmesh",
+        "pattern-https_to_odata_v4",
+        "pattern-event_mesh_async",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-https_to_odata_v2"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-09",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 203,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "component-contentmodifier",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-10",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 212,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "adapter-https"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-11",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 214,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "component-contentmodifier"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-12",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 198,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "component-splitter",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-13",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 160,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "pattern-jms_retry",
+        "adapter-jms",
+        "adapter-odatav4",
+        "adapter-odatav2"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-14",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 256,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http",
+        "pattern-error_handling_standard"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-15",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 211,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-sftp_to_odata",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav2",
+        "adapter-odatav4",
+        "adapter-sftp"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-16",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 262,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "adapter-http",
+        "adapter-https",
+        "pattern-https_to_http",
+        "pattern-error_handling_standard",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-17",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 209,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "component-splitter"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-18",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 261,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "error-401",
+        "oauth-alias",
+        "adapter-http",
+        "error-directvmconsumernotavailableexception",
+        "error-403",
+        "error-unknownhostexception"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-19",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 264,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "error-429",
+        "error-directvmconsumernotavailableexception",
+        "adapter-http",
+        "error-unknownhostexception",
+        "error-500",
+        "error-403"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-20",
+      "mode": "rag_plan_only",
+      "backend": "sandbox",
+      "success": null,
+      "status": "plan_only",
+      "plan_valid": true,
+      "time_ms": 196,
+      "actions": 0,
+      "usage": {
+        "cost_usd": 0,
+        "model_calls": 0,
+        "retries": 0,
+        "human_interventions": 0
+      },
+      "retrieved_ids": [
+        "error-timeout",
+        "error-directvmconsumernotavailableexception",
+        "error-403",
+        "error-500",
+        "error-unknownhostexception",
+        "error-mapping_failure"
+      ],
+      "executor_mix": {}
+    },
+    {
+      "task_id": "sapbench-v1-01",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 97,
+      "actions": 1,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-processdirect_layered",
+        "pattern-error_handling_standard",
+        "pattern-event_mesh_async",
+        "pattern-jms_retry"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-02",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 185,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http",
+        "adapter-soap"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-03",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 185,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav2",
+        "adapter-odatav4",
+        "pattern-sftp_to_odata",
+        "pattern-https_to_http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-04",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 183,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "pattern-https_to_http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-05",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 196,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-sftp_to_odata",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav2",
+        "adapter-sftp"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-06",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 189,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-soap_to_rest",
+        "adapter-soap",
+        "pattern-processdirect_layered",
+        "pattern-event_mesh_async",
+        "pattern-jms_retry",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-07",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 186,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "adapter-jms",
+        "pattern-jms_retry",
+        "adapter-http",
+        "pattern-https_to_http",
+        "adapter-https",
+        "adapter-soap"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-08",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 188,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "adapter-eventmesh",
+        "pattern-https_to_odata_v4",
+        "pattern-event_mesh_async",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-https_to_odata_v2"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-09",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 235,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "component-contentmodifier",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-10",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 238,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "adapter-https"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-11",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 244,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "component-contentmodifier"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-12",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 225,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "component-splitter",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-13",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 186,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "pattern-jms_retry",
+        "adapter-jms",
+        "adapter-odatav4",
+        "adapter-odatav2"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-14",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 280,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http",
+        "pattern-error_handling_standard"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-15",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 240,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-sftp_to_odata",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav2",
+        "adapter-odatav4",
+        "adapter-sftp"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-16",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 290,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "adapter-http",
+        "adapter-https",
+        "pattern-https_to_http",
+        "pattern-error_handling_standard",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-17",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 243,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "adapter-odatav4",
+        "adapter-odatav2",
+        "pattern-sftp_to_odata",
+        "component-splitter"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-18",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 265,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "error-401",
+        "oauth-alias",
+        "adapter-http",
+        "error-directvmconsumernotavailableexception",
+        "error-403",
+        "error-unknownhostexception"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-19",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 258,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "error-429",
+        "error-directvmconsumernotavailableexception",
+        "adapter-http",
+        "error-unknownhostexception",
+        "error-500",
+        "error-403"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-20",
+      "mode": "rag_tools",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 191,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "error-timeout",
+        "error-directvmconsumernotavailableexception",
+        "error-403",
+        "error-500",
+        "error-unknownhostexception",
+        "error-mapping_failure"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-01",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 111,
+      "actions": 1,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-processdirect_layered",
+        "pattern-error_handling_standard",
+        "pattern-event_mesh_async",
+        "pattern-jms_retry"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-02",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 211,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_http",
+        "adapter-https",
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "adapter-http",
+        "adapter-soap"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-03",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 276,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-https_to_odata_v2",
+        "pattern-https_to_odata_v4",
+        "trajectory-c18a9440f809",
+        "adapter-odatav2",
+        "adapter-odatav4",
+        "pattern-sftp_to_odata"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-04",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 285,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4",
+        "pattern-https_to_odata_v2",
+        "trajectory-c18a9440f809",
+        "adapter-odatav4",
+        "adapter-odatav2"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-05",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 299,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-85c4faf145aa",
+        "pattern-sftp_to_odata",
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4",
+        "adapter-odatav4",
+        "pattern-https_to_odata_v2"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-06",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 304,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "pattern-soap_to_rest",
+        "adapter-soap",
+        "trajectory-85c4faf145aa",
+        "trajectory-37b65c0d30e6",
+        "trajectory-1606b5d230ec",
+        "trajectory-c18a9440f809"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-07",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 320,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-c18a9440f809",
+        "adapter-jms",
+        "pattern-jms_retry",
+        "trajectory-85c4faf145aa",
+        "trajectory-37b65c0d30e6",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-08",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 342,
+      "actions": 8,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-1606b5d230ec",
+        "trajectory-85c4faf145aa",
+        "trajectory-37b65c0d30e6",
+        "adapter-eventmesh",
+        "pattern-https_to_odata_v4",
+        "pattern-event_mesh_async"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 3
+      }
+    },
+    {
+      "task_id": "sapbench-v1-09",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 399,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-c18a9440f809",
+        "trajectory-37b65c0d30e6",
+        "trajectory-85c4faf145aa",
+        "pattern-https_to_http",
+        "adapter-https",
+        "trajectory-c2cb1d566327"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-10",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 418,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-85c4faf145aa",
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4",
+        "trajectory-1606b5d230ec",
+        "trajectory-556009e81cf9",
+        "pattern-https_to_odata_v2"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-11",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 436,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-4b7b9f05914b",
+        "trajectory-85c4faf145aa",
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4",
+        "trajectory-1606b5d230ec",
+        "trajectory-2fbfbc5d5b38"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-12",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 448,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-c18a9440f809",
+        "trajectory-2fbfbc5d5b38",
+        "trajectory-444b1ef7fee9",
+        "trajectory-37b65c0d30e6",
+        "trajectory-85c4faf145aa",
+        "trajectory-4b7b9f05914b"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-13",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 456,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-85c4faf145aa",
+        "trajectory-4b7b9f05914b",
+        "trajectory-444b1ef7fee9",
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4",
+        "trajectory-1606b5d230ec"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-14",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 465,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-c18a9440f809",
+        "trajectory-2fbfbc5d5b38",
+        "trajectory-f184faeec708",
+        "trajectory-37b65c0d30e6",
+        "trajectory-a4ee75800d6a",
+        "trajectory-85c4faf145aa"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-15",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 476,
+      "actions": 9,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-1606b5d230ec",
+        "trajectory-444b1ef7fee9",
+        "pattern-sftp_to_odata",
+        "trajectory-37b65c0d30e6",
+        "trajectory-85c4faf145aa",
+        "trajectory-4b7b9f05914b"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 4
+      }
+    },
+    {
+      "task_id": "sapbench-v1-16",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 473,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-4b7b9f05914b",
+        "trajectory-444b1ef7fee9",
+        "trajectory-e021b6552c42",
+        "trajectory-c18a9440f809",
+        "trajectory-f184faeec708",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-17",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 485,
+      "actions": 10,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-444b1ef7fee9",
+        "trajectory-4b7b9f05914b",
+        "trajectory-85c4faf145aa",
+        "trajectory-a4ee75800d6a",
+        "trajectory-37b65c0d30e6",
+        "pattern-https_to_odata_v4"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 5,
+        "sandbox:template": 5
+      }
+    },
+    {
+      "task_id": "sapbench-v1-18",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 426,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "error-401",
+        "oauth-alias",
+        "trajectory-c2cb1d566327",
+        "trajectory-c18a9440f809",
+        "adapter-http",
+        "error-directvmconsumernotavailableexception"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-19",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 557,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-cf339f31c305",
+        "error-429",
+        "trajectory-c2cb1d566327",
+        "trajectory-c18a9440f809",
+        "error-directvmconsumernotavailableexception",
+        "adapter-http"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    },
+    {
+      "task_id": "sapbench-v1-20",
+      "mode": "rag_tools_trajectory",
+      "backend": "sandbox",
+      "success": true,
+      "status": "succeeded",
+      "plan_valid": true,
+      "time_ms": 411,
+      "actions": 2,
+      "usage": {
+        "model_calls": 0,
+        "input_tokens": 0,
+        "output_tokens": 0,
+        "api_calls": 0,
+        "retries": 0,
+        "human_interventions": 0,
+        "cost_usd": 0.0
+      },
+      "retrieved_ids": [
+        "trajectory-0f88c92b3c47",
+        "trajectory-cf339f31c305",
+        "error-timeout",
+        "error-directvmconsumernotavailableexception",
+        "error-403",
+        "error-500"
+      ],
+      "executor_mix": {
+        "sandbox:sap_api": 1,
+        "sandbox:mcp": 1
+      }
+    }
+  ],
+  "notes": [
+    "Same deterministic planner across executed modes. Equal success is not evidence of RAG uplift.",
+    "Plan-only mode does not execute and has null task success.",
+    "Trajectory mode adds sandbox successes; replay gain is not assumed."
+  ]
+}

@@ -1,0 +1,37 @@
+{
+  "postgres_tenant_isolation": true,
+  "incremental_ingestion": true,
+  "image_retrieval": true,
+  "image_tenant_isolation": true,
+  "summary": {
+    "tools_only": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 18
+    },
+    "rag_plan_only": {
+      "tasks": 20,
+      "successes": 0,
+      "executed": 0,
+      "mean_ms": 192
+    },
+    "rag_tools": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 215
+    },
+    "rag_tools_trajectory": {
+      "tasks": 20,
+      "successes": 20,
+      "executed": 20,
+      "mean_ms": 380
+    }
+  },
+  "retrieval": {
+    "recall_at_k": 0.875,
+    "mrr": 1.0,
+    "ndcg": 0.9032867981913646
+  }
+}

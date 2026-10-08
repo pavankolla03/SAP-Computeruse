@@ -1,15 +1,36 @@
 services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    environment:
+      POSTGRES_USER: sap_cua
+      POSTGRES_PASSWORD: ${SAP_CUA_DB_PASSWORD:?Set a local database password in .env}
+      POSTGRES_DB: sapcua
+    volumes:
+      - sap-cua-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sap_cua -d sapcua"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
   workbench:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
-    ports:
-      - "127.0.0.1:8000:8000"
+    ports: ["127.0.0.1:8000:8000"]
+    depends_on:
+      postgres:
+        condition: service_healthy
     volumes:
       - sap-cua-data:/data
     environment:
       SAP_CUA_DATA_DIR: /data
+      SAP_CUA_EMBEDDING_CACHE: /data/embedding-cache
       SAP_CUA_ALLOW_CONTAINER: "1"
+      SAP_CUA_DATABASE_URL: postgresql://sap_cua:${SAP_CUA_DB_PASSWORD}@postgres:5432/sapcua
+      SAP_CUA_CUSTOMER: ${SAP_CUA_CUSTOMER:-local}
+      SAP_CUA_TENANT: ${SAP_CUA_TENANT:-dev}
+    command: ["sh", "-c", "sap-cua rag init && exec sap-cua serve --host 0.0.0.0 --port 8000"]
     restart: unless-stopped
 volumes:
   sap-cua-data:
+  sap-cua-postgres:
