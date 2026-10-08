@@ -14,3 +14,7 @@ $('load-example').addEventListener('click',()=>{$('requirement').value='Create H
 $('search-form').addEventListener('submit',async event=>{event.preventDefault();try{showSources((await api('/search',{query:$('query').value})).hits);}catch(e){message(e.message,true);}});
 $('refresh').addEventListener('click',()=>refresh().catch(e=>message(e.message,true)));
 Promise.all([status(),refresh()]).catch(e=>{$('knowledge-status').textContent='Setup required';message(e.message,true);});
+
+function invalidatePlan(){currentPlan=null;$('execute').disabled=true;$('plan-note').textContent='Generate a new plan for this requirement.';}
+$('requirement').addEventListener('input',invalidatePlan);
+$('load-example').addEventListener('click',invalidatePlan);
