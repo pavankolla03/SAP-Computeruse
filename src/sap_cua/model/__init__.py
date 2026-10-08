@@ -41,124 +41,49 @@ class ComputerUseModel(ABC):
 
 
 class OpenCUAAdapter(ComputerUseModel):
-    """Adapter for OpenCUA-7B via Transformers/vLLM."""
+    """Real screenshot inference; unavailable checkpoints fail explicitly."""
+    def __init__(self, model_path: str | None = None, **kwargs: Any):
+        from sap_cua.model.opencua import OpenCUARuntime
+        self.runtime = OpenCUARuntime(model_path)
+        self.history = []
+        self._last_action = ""
 
-    def __init__(
-        self,
-        model_path: str = "xlangai/OpenCUA-7B",
-        device: str = "cpu",
-        use_vllm: bool = False,
-        torch_dtype: str = "float32",
-    ) -> None:
-        self.model_path = model_path
-        self.device = device
-        self.use_vllm = use_vllm
-        self.torch_dtype = torch_dtype
-        self.history: list[dict[str, Any]] = []
-        self._last_action: str = ""
-        self._last_confidence: float = 0.0
-        self._loaded = False
-        logger.info("OpenCUAAdapter initialized (model=%s, device=%s)", model_path, device)
+    def observe(self, image):
+        if isinstance(image, str):
+            with PILImage.open(image) as img:
+                return {"image_size": img.size}
+        if not isinstance(image, PILImage.Image):
+            raise ValueError("OpenCUA requires an actual screenshot")
+        return {"image_size": image.size}
 
-    def _ensure_loaded(self) -> None:
-        if self._loaded:
-            return
-        if self.use_vllm:
-            try:
-                from vllm import LLM  # noqa: F401
-                logger.info("vLLM backend available")
-            except ImportError:
-                logger.warning("vLLM not available, falling back to transformers")
-                self.use_vllm = False
-        self._loaded = True
-        logger.info("OpenCUA-7B model ready (deferred loading)")
-
-    def observe(self, image: PILImage | str) -> dict[str, Any]:
-        self._ensure_loaded()
-        if isinstance(image, str) and _HAS_PIL:
-            image = PILImage.open(image)  # type: ignore[union-attr]
-        return {"image_size": (1024, 1024), "has_pil": _HAS_PIL}
-
-    def plan(self, instruction: str, history: list[dict[str, Any]]) -> dict[str, Any]:
+    def plan(self, instruction, history):
         return {"instruction": instruction, "steps": len(history)}
 
-    def act(self, instruction: str, image: PILImage | str, history: list[dict[str, Any]]) -> ModelResponse:
-        from sap_cua.types import ExecutorType
-        self._ensure_loaded()
-        self._last_action = "click_0.5_0.5"
-        self._last_confidence = 0.7
-        self.history.append({"instruction": instruction, "action": self._last_action})
-        return ModelResponse(
-            intent="CLICK",
-            executor=ExecutorType.GUI,
-            gui_action=GUIAction(type="click", x=0.5, y=0.5),
-            confidence=self._last_confidence,
-            reasoning="OpenCUA placeholder action",
-        )
+    def act(self, instruction, image, history):
+        self.observe(image)
+        if isinstance(image, str):
+            with PILImage.open(image) as img:
+                response = self.runtime.ground(img, instruction)
+        else:
+            response = self.runtime.ground(image, instruction)
+        self._last_action = response.intent
+        return response
 
-    def reset(self) -> None:
+    def reset(self):
         self.history.clear()
         self._last_action = ""
-        self._last_confidence = 0.0
 
-    def get_action(self) -> str:
+    def get_action(self):
         return self._last_action
 
-    def get_confidence(self) -> float:
-        return self._last_confidence
+    def get_confidence(self):
+        return 0.0  # No calibrated confidence estimator is available.
 
 
-class UITARSAdapter(ComputerUseModel):
-    """Adapter for ByteDance UI-TARS-1.5-7B."""
-
-    def __init__(
-        self,
-        model_path: str = "bytedance/UI-TARS-1.5-7B",
-        device: str = "cpu",
-        use_vllm: bool = False,
-        torch_dtype: str = "float32",
-    ) -> None:
-        self.model_path = model_path
-        self.device = device
-        self.use_vllm = use_vllm
-        self.torch_dtype = torch_dtype
-        self.history: list[dict[str, Any]] = []
-        self._last_action = ""
-        self._last_confidence = 0.0
-        self._loaded = False
-        logger.info("UITARSAdapter initialized (model=%s)", model_path)
-
-    def _ensure_loaded(self) -> None:
-        if self._loaded:
-            return
-        self._loaded = True
-
-    def observe(self, image: PILImage | str) -> dict[str, Any]:
-        return {"image_size": (1024, 1024), "has_pil": _HAS_PIL}
-
-    def plan(self, instruction: str, history: list[dict[str, Any]]) -> dict[str, Any]:
-        return {"instruction": instruction, "steps": len(history)}
-
-    def act(self, instruction: str, image: PILImage | str, history: list[dict[str, Any]]) -> ModelResponse:
-        from sap_cua.types import ExecutorType
-        self._last_action = "click_0.5_0.5"
-        self._last_confidence = 0.7
-        return ModelResponse(
-            intent="CLICK",
-            executor=ExecutorType.GUI,
-            gui_action=GUIAction(type="click", x=0.5, y=0.5),
-            confidence=0.7,
-            reasoning="UI-TARS placeholder",
-        )
-
-    def reset(self) -> None:
-        self.history.clear()
-
-    def get_action(self) -> str:
-        return self._last_action
-
-    def get_confidence(self) -> float:
-        return self._last_confidence
+class UITARSAdapter(OpenCUAAdapter):
+    """Reserved baseline; never masquerades as working inference."""
+    def act(self, instruction, image, history):
+        raise NotImplementedError("UI-TARS inference is not connected")
 
 
 class MockModel(ComputerUseModel):

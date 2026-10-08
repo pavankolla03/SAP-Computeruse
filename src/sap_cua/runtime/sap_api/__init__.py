@@ -1,331 +1,216 @@
-"""SAP API client — typed, retry-capable HTTP client for SAP Integration Suite.
+"""SAP Cloud Integration OData client with per-instance OAuth and explicit mutations.
 
-All methods return a dict of the form ``{"success": bool, "data": Any,
-"error": str | None}``.  When the required environment variables are absent,
-the client falls back to a *mock mode* so that callers do not have to special-
-case development environments.
+No implicit mock fallback, cross-host redirects, or automatic write retries.
+Tenant permissions, CSRF requirements and supported resources need tenant validation.
 """
 
 from __future__ import annotations
 
-import logging
+import base64
 import os
+import re
 import time
 from typing import Any
+from urllib.parse import urlsplit
 
 import httpx
 
-logger = logging.getLogger(__name__)
 
-# ─── Environment defaults ────────────────────────────────────────────────────
-
-ENV_BASE_URL = os.getenv("SAP_BASE_URL", "")
-ENV_API_BASE = os.getenv("SAP_API_BASE_URL", "")
-ENV_CLIENT_ID = os.getenv("SAP_CLIENT_ID", "")
-ENV_CLIENT_SECRET = os.getenv("SAP_CLIENT_SECRET", "")
-
-_IS_MOCK = not (ENV_BASE_URL and ENV_API_BASE and ENV_CLIENT_ID and ENV_CLIENT_SECRET)
+def identifier(value: str) -> str:
+    if not re.fullmatch(r"[A-Za-z0-9_.-]{1,200}", value):
+        raise ValueError("Invalid SAP artifact identifier")
+    return value
 
 
-# ─── Helpers ─────────────────────────────────────────────────────────────────
+def secure_url(value: str) -> str:
+    parsed = urlsplit(value)
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise ValueError("SAP endpoint must be an HTTPS URL without credentials, query or fragment")
+    return value.rstrip("/")
 
-def _build_headers() -> dict[str, str]:
-    return {"Content-Type": "application/json"}
-
-
-def _build_auth() -> httpx.Auth | None:
-    """Return a BasicAuth if credentials are configured."""
-    if _IS_MOCK:
-        return None
-    return httpx.BasicAuth(ENV_CLIENT_ID, ENV_CLIENT_SECRET)
-
-
-def _base_url() -> str:
-    return ENV_API_BASE or f"{ENV_BASE_URL.rstrip('/')}/api/v1"
-
-
-def _mock_success(data: Any = None) -> dict[str, Any]:
-    return {"success": True, "data": data, "error": None}
-
-
-def _mock_failure(error: str) -> dict[str, Any]:
-    return {"success": False, "data": None, "error": error}
-
-
-# ─── Retry logic ─────────────────────────────────────────────────────────────
-
-_RETRYABLE = {429, 500, 502, 503, 504}
-
-
-def _call_with_retry(
-    method: str,
-    url: str,
-    client: httpx.Client,
-    json_body: dict[str, Any] | None = None,
-    max_attempts: int = 3,
-    backoff: float = 1.0,
-) -> httpx.Response:
-    """Make an HTTP request with exponential-backoff retry on 5xx / 429."""
-    last_exc: Exception | None = None
-    for attempt in range(1, max_attempts + 1):
-        try:
-            resp = client.request(
-                method,
-                url,
-                json=json_body,
-                headers=_build_headers(),
-                auth=_build_auth(),
-                timeout=30,
-            )
-            if resp.status_code not in _RETRYABLE:
-                return resp
-            # retryable
-            logger.warning(
-                "SAP API %s %s returned %d (attempt %d/%d)",
-                method, url, resp.status_code, attempt, max_attempts,
-            )
-        except httpx.HTTPError as exc:
-            last_exc = exc
-            logger.warning(
-                "SAP API %s %s raised %s (attempt %d/%d)",
-                method, url, exc, attempt, max_attempts,
-            )
-        time.sleep(backoff * (2 ** (attempt - 1)))
-    if last_exc:
-        raise last_exc
-    return resp  # type: ignore[possibly-undefined]
-
-
-# ─── SAPAPIClient ─────────────────────────────────────────────────────────────
 
 class SAPAPIClient:
-    """Typed SAP Integration Suite REST API client.
-
-    Falls back to mock mode when env vars are absent.
-    """
-
     def __init__(
         self,
         base_url: str = "",
         api_base: str = "",
         client_id: str = "",
         client_secret: str = "",
-    ) -> None:
-        global _IS_MOCK
-        self.base_url = base_url or ENV_BASE_URL
-        self.api_base = api_base or ENV_API_BASE or f"{self.base_url.rstrip('/')}/api/v1"
-        self.client_id = client_id or ENV_CLIENT_ID
-        self.client_secret = client_secret or ENV_CLIENT_SECRET
-
-        self._is_mock = not (
-            self.base_url and self.client_id and self.client_secret
+        *,
+        token_url: str = "",
+        allow_mutations: bool = False,
+        transport: httpx.BaseTransport | None = None,
+    ):
+        self.api_base = secure_url(
+            api_base
+            or os.getenv("SAP_API_BASE_URL")
+            or (base_url.rstrip("/") + "/api/v1" if base_url else "")
         )
-        self._client: httpx.Client | None = None
+        self.token_url = secure_url(token_url or os.getenv("SAP_TOKEN_URL", ""))
+        self.client_id = client_id or os.getenv("SAP_CLIENT_ID", "")
+        self._secret = client_secret or os.getenv("SAP_CLIENT_SECRET", "")
+        if not self.client_id or not self._secret:
+            raise ValueError(
+                "SAP OAuth credentials are required; use SAPMockEnvironment explicitly for simulation"
+            )
+        self.allow_mutations = allow_mutations
+        self._client = httpx.Client(transport=transport, timeout=30, follow_redirects=False)
+        self._token = ""
+        self._expires = 0.0
 
-    # ─── Lifecycle ──────────────────────────────────────────────────────────
+    def close(self):
+        self._client.close()
 
-    def _get_client(self) -> httpx.Client:
-        if self._client is None or self._client.is_closed:
-            self._client = httpx.Client(base_url=self.api_base, timeout=30)
-        return self._client
-
-    def close(self) -> None:
-        if self._client and not self._client.is_closed:
-            self._client.close()
-
-    def __enter__(self) -> SAPAPIClient:
+    def __enter__(self):
         return self
 
-    def __exit__(self, *args: Any) -> None:
+    def __exit__(self, *args):
         self.close()
 
-    # ─── Package management ────────────────────────────────────────────────
-
-    def create_package(
-        self, name: str, description: str = ""
-    ) -> dict[str, Any]:
-        """Create a new integration package.
-
-        POST /api/v1/Packages
-        """
-        if self._is_mock:
-            return _mock_success({"id": f"pkg_{name.lower()}", "name": name, "description": description})
-        client = self._get_client()
-        body = {"name": name, "description": description}
-        try:
-            resp = _call_with_retry("POST", "/Packages", client, body)
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
-
-    def get_package(self, package_id: str) -> dict[str, Any]:
-        """Get a package by ID.
-
-        GET /api/v1/Packages('{id}')
-        """
-        if self._is_mock:
-            return _mock_success(
-                {"id": package_id, "name": package_id, "description": ""}
+    def _access_token(self) -> str:
+        if time.monotonic() < self._expires:
+            return self._token
+        response = self._client.post(
+            self.token_url,
+            data={"grant_type": "client_credentials"},
+            auth=httpx.BasicAuth(self.client_id, self._secret),
+        )
+        if response.status_code != 200:
+            raise RuntimeError(
+                f"SAP OAuth failed (HTTP {response.status_code}); response body withheld"
             )
-        client = self._get_client()
+        payload = response.json()
+        self._token = payload["access_token"]
+        self._expires = time.monotonic() + max(0, float(payload.get("expires_in", 300)) - 30)
+        return self._token
+
+    def _request(self, method: str, resource: str, *, body=None, params=None) -> dict[str, Any]:
+        if method != "GET" and not self.allow_mutations:
+            return {
+                "success": False,
+                "data": None,
+                "error": "Live mutations require explicit authorization",
+                "backend": "sap_api",
+            }
         try:
-            resp = _call_with_retry(
-                "GET", f"/Packages('{package_id}')", client
+            response = self._client.request(
+                method,
+                self.api_base + "/" + resource,
+                headers={
+                    "Authorization": "Bearer " + self._access_token(),
+                    "Accept": "application/json",
+                },
+                json=body,
+                params=params,
             )
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+            # Acceptance of deployment is NOT proof the runtime reached STARTED.
+            success = 200 <= response.status_code < 300
+            if not success:
+                return {
+                    "success": False,
+                    "data": None,
+                    "status_code": response.status_code,
+                    "error": f"SAP returned HTTP {response.status_code}; response body withheld",
+                    "backend": "sap_api",
+                }
+            if not response.content:
+                data = None
+            elif "json" in response.headers.get("content-type", ""):
+                data = response.json()
+                if isinstance(data, dict):
+                    data = data.get("d", data)
+            else:
+                data = {"task_id": response.text.strip().strip('"')}
+            return {
+                "success": True,
+                "data": data,
+                "status_code": response.status_code,
+                "error": None,
+                "backend": "sap_api",
+            }
+        except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
+            # Never include request headers, credentials, response bodies, or untrusted exception text.
+            return {
+                "success": False,
+                "data": None,
+                "error": f"SAP request failed ({type(exc).__name__}); writes were not retried",
+                "backend": "sap_api",
+            }
 
-    def update_package(self, package_id: str, data: dict[str, Any]) -> dict[str, Any]:
-        """Update a package.
+    def create_package(self, name: str, description: str = "", *, package_id: str | None = None):
+        return self._request(
+            "POST",
+            "IntegrationPackages",
+            body={
+                "Id": identifier(package_id or name),
+                "Name": name,
+                "Description": description,
+                "ShortText": description[:100],
+            },
+        )
 
-        PATCH /api/v1/Packages('{id}')
-        """
-        if self._is_mock:
-            return _mock_success({"id": package_id, **data})
-        client = self._get_client()
-        try:
-            resp = _call_with_retry(
-                "PATCH", f"/Packages('{package_id}')", client, data
-            )
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def get_package(self, package_id: str):
+        return self._request("GET", f"IntegrationPackages('{identifier(package_id)}')")
 
-    def delete_package(self, package_id: str) -> dict[str, Any]:
-        """Delete a package.
+    def update_package(self, package_id: str, data: dict[str, Any]):
+        if set(data) - {"Name", "Description", "ShortText", "Version", "Vendor"}:
+            raise ValueError("Unsupported package field")
+        return self._request("PUT", f"IntegrationPackages('{identifier(package_id)}')", body=data)
 
-        DELETE /api/v1/Packages('{id}')
-        """
-        if self._is_mock:
-            return _mock_success({"deleted": True, "id": package_id})
-        client = self._get_client()
-        try:
-            resp = _call_with_retry(
-                "DELETE", f"/Packages('{package_id}')", client
-            )
-            resp.raise_for_status()
-            return _mock_success({"deleted": True, "id": package_id})
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def delete_package(self, package_id: str):
+        return self._request("DELETE", f"IntegrationPackages('{identifier(package_id)}')")
 
-    # ─── iFlow management ──────────────────────────────────────────────────
-
-    def get_iflows(self, package_id: str) -> dict[str, Any]:
-        """Get all integration flows in a package.
-
-        GET /api/v1/IntegrationDesigntimeArtifacts?$filter=package eq '{id}'
-        """
-        if self._is_mock:
-            return _mock_success([])
-        client = self._get_client()
-        try:
-            resp = _call_with_retry(
-                "GET",
-                f"/IntegrationDesigntimeArtifacts?$filter=package eq '{package_id}'",
-                client,
-            )
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def get_iflows(self, package_id: str):
+        return self._request(
+            "GET", f"IntegrationPackages('{identifier(package_id)}')/IntegrationDesigntimeArtifacts"
+        )
 
     def create_iflow(
-        self, package_id: str, name: str, iflow_type: str = "INTEGRATION_FLOW"
-    ) -> dict[str, Any]:
-        """Create a new integration flow in a package.
+        self, package_id: str, name: str, *, artifact_zip: bytes, iflow_id: str | None = None
+    ):
+        if not artifact_zip.startswith(b"PK") or len(artifact_zip) > 20_000_000:
+            raise ValueError("A valid, bounded iFlow ZIP artifact is required")
+        return self._request(
+            "POST",
+            "IntegrationDesigntimeArtifacts",
+            body={
+                "Id": identifier(iflow_id or name),
+                "Name": name,
+                "PackageId": identifier(package_id),
+                "ArtifactContent": base64.b64encode(artifact_zip).decode(),
+            },
+        )
 
-        POST /api/v1/IntegrationDesigntimeArtifacts
-        """
-        if self._is_mock:
-            return _mock_success(
-                {"id": f"iflow_{name.lower()}", "name": name, "type": iflow_type}
-            )
-        client = self._get_client()
-        body = {
-            "name": name,
-            "type": iflow_type,
-            "packageId": package_id,
-        }
-        try:
-            resp = _call_with_retry(
-                "POST", "/IntegrationDesigntimeArtifacts", client, body
-            )
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def deploy_iflow(self, package_id: str, iflow_id: str, version: str = "active"):
+        identifier(package_id)
+        return self._request(
+            "POST",
+            "DeployIntegrationDesigntimeArtifact",
+            params={"Id": f"'{identifier(iflow_id)}'", "Version": f"'{identifier(version)}'"},
+        )
 
-    def deploy_iflow(self, package_id: str, iflow_id: str) -> dict[str, Any]:
-        """Deploy an integration flow.
+    def deployment_status(self, task_id: str):
+        return self._request("GET", f"BuildAndDeployStatus(TaskId='{identifier(task_id)}')")
 
-        POST /api/v1/Deploy
-        """
-        if self._is_mock:
-            return _mock_success(
-                {
-                    "id": f"deploy_{iflow_id}",
-                    "status": "STARTED",
-                    "message": f"Deployment of {iflow_id} started",
-                }
-            )
-        client = self._get_client()
-        body = {
-            "message": f"Deploy {iflow_id}",
-            "packageId": package_id,
-            "artifactId": iflow_id,
-        }
-        try:
-            resp = _call_with_retry("POST", "/Deploy", client, body)
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def runtime_status(self, iflow_id: str):
+        return self._request("GET", f"IntegrationRuntimeArtifacts('{identifier(iflow_id)}')")
 
-    # ─── Monitoring ────────────────────────────────────────────────────────
+    def query_mpl(self, filters: dict[str, Any] | None = None, limit: int = 100):
+        if not 1 <= limit <= 500:
+            raise ValueError("MPL limit must be between 1 and 500")
+        params = {"$top": limit, "$orderby": "LogStart desc", **(filters or {})}
+        if set(params) - {"$top", "$orderby", "$filter", "$skip", "$select"}:
+            raise ValueError("Unsupported MPL query option")
+        return self._request("GET", "MessageProcessingLogs", params=params)
 
-    def query_mpl(
-        self,
-        filters: dict[str, Any] | None = None,
-        limit: int = 100,
-    ) -> dict[str, Any]:
-        """Query the Message Processing Log.
-
-        GET /api/v1/MessageProcessingLogs
-        """
-        if self._is_mock:
-            return _mock_success([])
-        client = self._get_client()
-        params = filters or {}
-        params.setdefault("$top", min(limit, 500))
-        try:
-            resp = _call_with_retry("GET", "/MessageProcessingLogs", client)
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
-
-    # ─── Security ──────────────────────────────────────────────────────────
-
-    def get_security_materials(
-        self, filter_expr: str | None = None
-    ) -> dict[str, Any]:
-        """Get security materials (certificates, key stores, etc.).
-
-        GET /api/v1/SecurityMaterial
-        """
-        if self._is_mock:
-            return _mock_success([])
-        client = self._get_client()
-        url = "/SecurityMaterial"
-        if filter_expr:
-            url += f"?$filter={filter_expr}"
-        try:
-            resp = _call_with_retry("GET", url, client)
-            resp.raise_for_status()
-            return _mock_success(resp.json())
-        except Exception as exc:
-            return _mock_failure(str(exc))
+    def get_security_materials(self, filter_expr: str | None = None):
+        raise NotImplementedError(
+            "Security material access requires a separately authorized resource-specific implementation"
+        )

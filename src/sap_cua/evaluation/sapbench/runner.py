@@ -31,6 +31,7 @@ class BenchmarkConfig:
     model_type: str = "mock"
     use_mocks: bool = True
     seed: int = 42
+    levels: tuple[int, ...] = (1, 2, 3, 4, 5)
 
 
 class BenchmarkRunner:
@@ -40,6 +41,8 @@ class BenchmarkRunner:
         self.config = config or BenchmarkConfig()
         if not self.config.use_mocks:
             raise ValueError("Live benchmark environments are not implemented")
+        if not self.config.levels or set(self.config.levels) - {1, 2, 3, 4, 5}:
+            raise ValueError("Benchmark levels must be between 1 and 5")
         self.env = get_mock_environment()
         self.model = get_model(self.config.model_type)
         self.results: list[BenchmarkResult] = []
@@ -48,7 +51,7 @@ class BenchmarkRunner:
     def run(self) -> dict[str, Any]:
         """Run the full benchmark suite."""
         self.results.clear()
-        tasks = generate_benchmark_suite({1: 3, 2: 3, 3: 2, 4: 1, 5: 1}, seed=self.config.seed)
+        tasks = generate_benchmark_suite({level: count for level, count in {1: 3, 2: 3, 3: 2, 4: 1, 5: 1}.items() if level in self.config.levels}, seed=self.config.seed)
         logger.info("Running SAPBench %s: %d tasks, %d runs each", self.config.suite, len(tasks), self.config.runs_per_task)
         for task in tasks:
             for run_idx in range(self.config.runs_per_task):

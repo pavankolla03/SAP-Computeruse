@@ -1,12 +1,14 @@
-# External dependencies and blockers
+# External requirements
 
-Repository access is available at `/Users/it-stock/Desktop/SAP_Computer_USE`.
-Git is already initialized. Preserve the current repository and its uncommitted changes.
+1. **Development SAP tenant:** URL, scoped service-key/OAuth configuration and
+   sandbox resource permissions. Store secrets in an ignored environment file or
+   secret manager, never chat or source control. First validate read-only access;
+   tenant mutation and cleanup require an explicit resource scope.
+2. **Training data:** verified, sanitized screenshots/action trajectories. Existing
+   placeholder data and generated success labels must not become ground truth.
+3. **Training hardware:** a provisioned CUDA GPU with adequate memory, plus an
+   approved spend/time limit if paid. The current M1 Pro has 16 GB unified memory.
+   No paid compute has been started.
 
-Local engineering is not blocked by SAP credentials or GPUs. Implement and verify local contracts, fixtures, packaging, inference adapters, and data processing first.
-
-Before live SAP validation: obtain a sandbox tenant and scoped authentication; user handles any required MFA. Do not use production tenants as test fixtures.
-Before real GPU training: validate the real training pipeline, choose compute, define a spending cap, and obtain authorization for actual GPU/cloud spend.
-Before distribution or competitor claims: verify upstream model/dataset licensing, exact revisions and matched evaluation conditions.
-
-No trained checkpoint or validated SAP demonstration dataset exists in the inspected repository. These must be produced; they are not just configuration switches.
+These block live validation and a SAP-fine-tuned checkpoint, not local development.
+Full application completion and benchmark superiority remain unproven.

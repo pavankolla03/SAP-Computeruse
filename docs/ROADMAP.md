@@ -1,38 +1,17 @@
-# SAP-CUA implementation roadmap
+# Implementation sequence
 
-Preserve the useful existing action definitions, environment, types, and utility modules. Deliver connected, verified workflows phase by phase.
+1. Preserve/audit source; repair false-success paths and trajectory sanitization — done.
+2. Installable local workbench, scripted sandbox, persistent runs — implemented.
+3. Actual OpenCUA preprocessing/inference and SFT/QLoRA code — implemented;
+   full checkpoint loads locally; usable full inference and CUDA training remain unvalidated.
+4. Connect scoped SAP tenant and API verifiers; validate artifact upload/deployment,
+   functional responses, fresh MPL correlation and resource cleanup.
+5. Extend the origin-scoped image-conditioned browser loop, executor bindings and recorder UX,
+   recovery cases and resettable SAPWorld tasks. Build a reviewed dataset.
+6. Train grounding/trajectory/recovery adapters, run held-out SAPBench with family
+   split controls, compare model-only and hybrid baselines at equal budgets.
+7. Promote only measured checkpoints; complete registry provenance, cost reservations,
+   prompt-injection red-team suite and multi-user security before deployment.
+8. Add actual RL/self-play only after reward/verifier reliability is measured.
 
-## Completed first repair
-- [x] Audit current source and run baseline tests.
-- [x] Replace confidence-only/unconditional task success with observed-state verification.
-- [x] Share execution loop across API and mock benchmark.
-- [x] Preserve structured action arguments, reject unsupported mock execution.
-- [x] Repair structured sanitization and trajectory persistence.
-- [x] Repair local orchestrator/storage contracts and regression tests.
-
-## Next: reproducibility and one vertical workflow
-- [ ] Fix package build backend, installation extras and CLI entry points.
-- [ ] Fix Makefile, CI dependency installation and Docker/Compose paths.
-- [ ] Explicitly separate simulated inference/training artifacts from real capabilities.
-- [ ] Integrate policy, tenant scope, budget and audit at the execution boundary.
-- [ ] Implement a verified SAP API connector and register real executor capabilities.
-- [ ] Execute create/import → deploy → test payload → correlated MPL → verify → cleanup.
-- [ ] Validate in local fixtures, then the real SAP sandbox when credentials are available.
-
-## Real inference and data
-- [ ] Verify exact OpenCUA-7B checkpoint, processor, image/history format and action grammar.
-- [ ] Implement real multimodal inference and deterministic coordinate adapters.
-- [ ] Record aligned screenshot/DOM/action/state trajectories.
-- [ ] Redact images and review sensitive-field captures before dataset admission.
-- [ ] Version immutable manifests and leakage-safe task-family/tenant/time splits.
-- [ ] Make each evaluated benchmark task's setup, verification and reset executable.
-
-## Training and later autonomy
-- [ ] Implement real grounding LoRA/QLoRA and trajectory SFT.
-- [ ] Prove gradients, usable adapter files and reproducible checkpoint reload.
-- [ ] Run budget-approved GPU smoke and held-out baseline comparisons.
-- [ ] Add recovery training and controlled rollout collection.
-- [ ] Add RL only after rewards and sandbox resets are trustworthy.
-- [ ] Add authenticated tenant-aware product UI, isolated execution and operational release gates.
-
-Detailed acceptance gates and current gaps: [audit](AUDIT_2026-10-07.md).
+No phase is complete solely because mock unit tests pass.

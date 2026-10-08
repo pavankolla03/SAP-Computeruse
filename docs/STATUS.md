@@ -1,15 +1,33 @@
-# SAP-CUA status — 7 October 2026
+# Status — 8 October 2026
 
-Current stage: prototype audited; first execution/data-integrity repair implemented.
+The original implementation and integrity repairs are preserved in GitHub commit
+f9915c6. The next phase provides an installable local application, verified scripted
+sandbox workflows, durable sanitized run records, a real OpenCUA inference path,
+and actual LoRA/QLoRA training code.
 
-The software is not yet a working SAP-specialized trained model or a live SAP automation product.
+## Validated locally
 
-- Baseline: 265 tests passed, 17 errored.
-- After repair: 315 tests passed; API and mock benchmark smoke checks passed.
-- Shared API/agent/benchmark loop executes supported mock actions and requires independent task verification.
-- Structured recorder/trajectory persistence is sanitized; image-pixel sanitization is still missing.
-- Local orchestrator and trajectory storage contracts are repaired and covered by tests.
-- OpenCUA/UI-TARS adapters remain placeholders. Training modules still simulate training and do not produce usable learned weights.
-- Live SAP/executor integration, model inference, authentic data, training, evaluation and production security remain incomplete.
+- Installation, CLI, web API, isolated sandbox workflow, independent final verification.
+- Origin/session enforcement, durable results, execution budget, failure stops.
+- OAuth and SAP resource contracts against HTTP test transports (not a tenant).
+- Screenshot/action preprocessing and real loss/backprop/LoRA weight updates using
+  a reduced randomly initialized OpenCUA architecture. This is a software contract
+  test, not training or evaluation of the full 7B checkpoint.
+- Chromium application workflow and origin restrictions.
+- 48 synthetic SAPWorld screenshots/actions with actual browser state verification,
+  split as 32 train / 8 validation / 8 test; this is fixture coverage, not real SAP data.
+- Full 7B checkpoint loads with CPU/disk offload in about 37 seconds. A complete
+  action prediction did not finish within six minutes and the test was terminated.
+  Full-model action inference on this Mac is therefore not validated as usable.
 
-See [the audit](AUDIT_2026-10-07.md) for evidence, limitations and the phased implementation plan.
+## Still required
+
+- Real tenant integration and read-after-write/functional/MPL validation.
+- Reviewed SAP screenshots and trajectories with task-family held-out splits.
+- Approved CUDA hardware for 7B training; calibrated live benchmark measurements.
+- Model-driven semantic planning, real SAP browser tasks, recovery policies and broader SAPWorld coverage.
+- Production model promotion, spend accounting across providers, operational security,
+  complete prompt-injection evaluations, and real RL optimization.
+
+The shipped local UI deliberately identifies its execution as scripted and mock.
+No model benchmark, fine-tuned checkpoint, or production readiness claim is made.

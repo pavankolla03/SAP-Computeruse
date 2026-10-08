@@ -53,12 +53,12 @@ def test_get_model_unknown_type():
 def test_opencua_adapter():
     from sap_cua.model import OpenCUAAdapter
     model = OpenCUAAdapter(model_path="xlangai/OpenCUA-7B", device="cpu")
-    response = model.act("test", None, [])
-    assert response is not None
+    with pytest.raises(ValueError, match="screenshot"):
+        model.act("test", None, [])
 
 
 def test_uitars_adapter():
     from sap_cua.model import UITARSAdapter
     model = UITARSAdapter(model_path="bytedance/UI-TARS-1.5-7B")
-    response = model.act("test", None, [])
-    assert response is not None
+    with pytest.raises(NotImplementedError):
+        model.act("test", None, [])

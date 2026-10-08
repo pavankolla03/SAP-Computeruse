@@ -46,7 +46,6 @@ wandb/
 lightning_logs/
 
 # Docker
-.dockerignore
 
 # Tests
 .pytest_cache/
@@ -69,3 +68,14 @@ infra/gpu/jobs/*/
 tmp/
 temp/
 *.tmp
+# Local runtime state and downloaded assets
+.sap-cua/
+.models/
+.cache/
+outputs/
+results/
+.env.*
+!.env.example
+*.safetensors
+*.bin
+uv.lock.tmp

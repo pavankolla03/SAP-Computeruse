@@ -46,8 +46,10 @@ EXECUTOR_POLICY: dict[str, tuple[ExecutorType, ...]] = {
 class ExecutorRouter:
     """Routes SAP actions to the best available executor."""
 
-    def __init__(self, api_available: bool = False) -> None:
+    def __init__(self, api_available: bool = False, *, bindings: dict | None = None, authorize=None) -> None:
         self.api_available = api_available
+        self.bindings = bindings or {}
+        self.authorize = authorize
         self._last_reason: str = ""
 
     def route(self, action: SAPAction) -> SAPAction:
@@ -90,8 +92,23 @@ class ExecutorRouter:
         routed = self.route(action)
         sap_env = getattr(context, "sap_env", None)
         if sap_env is None:
+            # Bindings and authorization come from application configuration, never model text.
+            for executor in EXECUTOR_POLICY.get(action.intent, (action.executor,)):
+                binding = self.bindings.get(executor)
+                if binding is None or action.intent not in binding["intents"]:
+                    continue
+                definition = get_action_definition(action.intent)
+                trusted_action = action.model_copy(update={"risk": RiskLevel(definition.risk.value), "executor": executor})
+                if self.authorize is None or self.authorize(trusted_action) is not True:
+                    return {"success": False, "error": "Action is not authorized for the connected executor"}
+                try:
+                    result = binding["execute"](trusted_action)
+                    return {**result, "success": result.get("success") is True, "executor": executor}
+                except Exception as exc:
+                    # A write may have completed before a timeout. Never try a second executor.
+                    return {"success": False, "executor": executor, "error": type(exc).__name__, "outcome": "unknown"}
             return {"success": False, "executor": routed.executor,
-                    "error": "No executor is connected"}
+                    "error": "No executor is connected for this intent"}
         from sap_cua.sap.mocks import SAPMockEnvironment
         if not isinstance(sap_env, SAPMockEnvironment):
             return {"success": False, "error": "Live executor integration is not implemented"}

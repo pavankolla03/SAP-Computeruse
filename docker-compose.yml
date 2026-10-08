@@ -1,142 +1,15 @@
-version: '3.8'
-
 services:
-  postgres:
-    image: postgres:16-alpine
-    container_name: sap-cua-postgres
-    environment:
-      POSTGRES_USER: sapcua
-      POSTGRES_PASSWORD: changeme
-      POSTGRES_DB: sapcua
-    ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U sapcua"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  redis:
-    image: redis:7-alpine
-    container_name: sap-cua-redis
-    ports:
-      - "6379:6379"
-    volumes:
-      - redis_data:/data
-    healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
-      interval: 5s
-      timeout: 3s
-      retries: 5
-
-  minio:
-    image: minio/minio:latest
-    container_name: sap-cua-minio
-    command: server /data --console-address ":9001"
-    environment:
-      MINIO_ROOT_USER: minioadmin
-      MINIO_ROOT_PASSWORD: minioadmin
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    volumes:
-      - minio_data:/data
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  mlflow:
-    image: ghcr.io/mlflow/mlflow:latest
-    container_name: sap-cua-mlflow
-    command: mlflow server --host 0.0.0.0 --port 5000 --backend-store-uri postgresql://sapcua:changeme@postgres:5432/sapcua --default-artifact-root s3://sapcua-artifacts
-    ports:
-      - "5000:5000"
-    environment:
-      MLFLOW_S3_ENDPOINT_URL: http://minio:9000
-      AWS_ACCESS_KEY_ID: minioadmin
-      AWS_SECRET_ACCESS_KEY: minioadmin
-    depends_on:
-      postgres:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-
-  api:
+  workbench:
     build:
       context: .
       dockerfile: infra/docker/api.Dockerfile
-    container_name: sap-cua-api
-    command: uvicorn sap_cua.api.main:app --host 0.0.0.0 --port 8000 --reload
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
-      - ./:/app
+      - sap-cua-data:/data
     environment:
-      - DATABASE_URL=postgresql+asyncpg://sapcua:changeme@postgres:5432/sapcua
-      - REDIS_URL=redis://redis:6379/0
-      - S3_ENDPOINT=http://minio:9000
-      - MLFLOW_TRACKING_URI=http://mlflow:5000
-    depends_on:
-      postgres:
-        condition: service_healthy
-      redis:
-        condition: service_healthy
-      minio:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-
-  inference:
-    build:
-      context: .
-      dockerfile: infra/docker/inference.Dockerfile
-    container_name: sap-cua-inference
-    ports:
-      - "8001:8001"
-    volumes:
-      - model_registry:/app/model_registry
-    environment:
-      - INFERENCE_DEVICE=cuda
-      - MODEL_BASE_PATH=/app/model_registry/sap-cua-7b-v0
-    deploy:
-      resources:
-        reservations:
-          devices:
-            - driver: nvidia
-              count: 1
-              capabilities: [gpu]
-    profiles:
-      - gpu
-
-  prometheus:
-    image: prom/prometheus:latest
-    container_name: sap-cua-prometheus
-    ports:
-      - "9090:9090"
-    volumes:
-      - ./infra/docker/prometheus.yml:/etc/prometheus/prometheus.yml
-
-  grafana:
-    image: grafana/grafana:latest
-    container_name: sap-cua-grafana
-    ports:
-      - "3000:3000"
-    environment:
-      - GF_SECURITY_ADMIN_PASSWORD=admin
-    volumes:
-      - grafana_data:/var/lib/grafana
-    depends_on:
-      - prometheus
-
+      SAP_CUA_DATA_DIR: /data
+      SAP_CUA_ALLOW_CONTAINER: "1"
+    restart: unless-stopped
 volumes:
-  postgres_data:
-  redis_data:
-  minio_data:
-  grafana_data:
+  sap-cua-data:

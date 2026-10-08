@@ -1,309 +1,259 @@
-"""Supervised Fine-Tuning module for SAP-CUA."""
+"""Actual screenshot-conditioned LoRA SFT. Validation never reports training metrics."""
 
+from __future__ import annotations
+import hashlib
 import json
-import logging
-import os
-import random
-import time
 from pathlib import Path
-from typing import Any, Dict, Optional
+from typing import Any
 
-from pydantic import BaseModel, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field
+from PIL import Image
 
-logger = logging.getLogger(__name__)
-
-
-def _torch():
-    """Lazy import of torch."""
-    import torch
-    return torch
+from sap_cua.model.opencua import OpenCUARuntime, parse_action, resized_dimensions
+from sap_cua.security import sanitize_data
 
 
 class SFTConfig(BaseModel):
-    """Configuration for Supervised Fine-Tuning."""
-
-    base_model: str = "xlangai/OpenCUA-7B"
-    output_dir: str = Field(..., description="Directory to save trained model")
-    lora_r: int = 8
-    lora_alpha: int = 16
-    lora_dropout: float = 0.05
-    learning_rate: float = 2e-4
-    batch_size: int = 4
-    num_epochs: int = 3
-    max_seq_length: int = 2048
-    use_qlora: bool = True
-    gradient_accumulation_steps: int = 4
-    warmup_ratio: float = 0.03
-    logging_steps: int = 10
-    save_steps: int = 500
+    model_config = ConfigDict(extra="forbid")
+    base_model: str = ".models/OpenCUA-7B"
+    dataset_path: str = "dataset.jsonl"
+    output_dir: str
+    lora_r: int = Field(8, ge=1, le=128)
+    lora_alpha: int = Field(16, ge=1)
+    lora_dropout: float = Field(0.05, ge=0, lt=1)
+    learning_rate: float = Field(2e-4, gt=0)
+    num_epochs: int = Field(3, ge=1)
+    max_seq_length: int = Field(4096, ge=128)
+    use_qlora: bool = False
+    gradient_accumulation_steps: int = Field(4, ge=1)
+    warmup_ratio: float = Field(0.03, ge=0, lt=1)
+    logging_steps: int = Field(10, ge=1)
+    save_steps: int = Field(100, ge=1)
+    max_steps: int = Field(100, ge=1, le=100000)
     seed: int = 42
 
-    @model_validator(mode="after")
-    def _adjust_for_accelerator(self) -> "SFTConfig":
-        """Reduce batch size when no CUDA is available."""
-        try:
-            torch = _torch()
-            if not torch.cuda.is_available():
-                if self.batch_size > 1:
-                    self.batch_size = 1
-                    logger.info(
-                        "Adjusting batch_size to 1 (no CUDA available)."
-                    )
-        except ImportError:
-            if self.batch_size > 1:
-                self.batch_size = 1
-                logger.info(
-                    "torch not installed; adjusting batch_size to 1."
-                )
-        return self
+
+def load_dataset(path: str) -> tuple[dict[str, list[dict[str, Any]]], dict[str, Any]]:
+    """Explicit family-grouped splits, verified labels, bounded local image paths."""
+    source = Path(path).resolve(strict=True)
+    splits: dict[str, list[dict[str, Any]]] = {"train": [], "validation": [], "test": []}
+    families: dict[str, str] = {}
+    images: dict[str, str] = {}
+    digest = hashlib.sha256(source.read_bytes())
+    for number, line in enumerate(source.read_text().splitlines(), 1):
+        if not line.strip():
+            continue
+        row = json.loads(line)
+        for key in ("instruction", "response", "image_path", "family", "split"):
+            if not isinstance(row.get(key), str) or not row[key].strip():
+                raise ValueError(f"Row {number}: {key} is required")
+        split, family = row["split"], row["family"]
+        if split not in splits:
+            raise ValueError(f"Row {number}: invalid split")
+        if row.get("verified") is not True or row.get("image_sanitized") is not True:
+            raise ValueError(f"Row {number}: verified action and reviewed/redacted image required")
+        if row.get("source") not in ("human", "validated_teacher", "sandbox"):
+            raise ValueError(f"Row {number}: explicit data source required")
+        if sanitize_data({"text": row["instruction"], "response": row["response"]}) != {
+            "text": row["instruction"],
+            "response": row["response"],
+        }:
+            raise ValueError(f"Row {number}: secret-like text must be redacted before training")
+        image_path = (source.parent / row["image_path"]).resolve(strict=True)
+        if not image_path.is_relative_to(source.parent):
+            raise ValueError(f"Row {number}: image must be inside dataset directory")
+        content = image_path.read_bytes()
+        image_hash = hashlib.sha256(content).hexdigest()
+        if (
+            families.setdefault(family, split) != split
+            or images.setdefault(image_hash, split) != split
+        ):
+            raise ValueError(f"Row {number}: family or duplicate screenshot leaks across splits")
+        with Image.open(image_path) as image:
+            w, h = resized_dimensions(*image.size)
+            parse_action(row["response"], w, h)
+        row["image_path"] = str(image_path)
+        row["image_sha256"] = image_hash
+        digest.update(content)
+        splits[split].append(row)
+    if not splits["train"] or not splits["validation"]:
+        raise ValueError("Non-empty train and validation splits are required")
+    manifest = {
+        "sha256": digest.hexdigest(),
+        "counts": {k: len(v) for k, v in splits.items()},
+        "family_count": len(families),
+        "image_review": "attested_by_dataset_author",
+    }
+    return splits, manifest
 
 
 class SFTTrainer:
-    """Supervised Fine-Tuning trainer for SAP-CUA.
-
-    Detects available hardware (CUDA, MPS, CPU), prepares datasets,
-    runs training (or dry-run on CPU-only machines), and persists
-    artefacts to *output_dir*.
-    """
-
-    def __init__(self, config: SFTConfig) -> None:
+    def __init__(self, config: SFTConfig):
         self.config = config
         self.output_path = Path(config.output_dir)
-        self.output_path.mkdir(parents=True, exist_ok=True)
         self._model = None
-        self._tokenizer = None
-        self._peft_config = None
+        self.runtime = OpenCUARuntime(config.base_model)
 
-        # ── hardware detection ─────────────────────────────────────
-        self.gpu_used: Optional[str] = None
-        try:
-            torch = _torch()
-            if torch.cuda.is_available():
-                self.gpu_used = torch.cuda.get_device_name(0)
-                logger.info("CUDA GPU detected: %s", self.gpu_used)
-            elif hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
-                self.gpu_used = "MPS"
-                logger.info("Apple Silicon (MPS) detected.")
-            else:
-                self.gpu_used = None
-                logger.info("Running on CPU only.")
-        except ImportError:
-            self.gpu_used = None
-            logger.info("torch not installed; treating as CPU-only.")
+    def prepare_dataset(self, dataset_path: str):
+        return load_dataset(dataset_path)[0]
 
-    # ── dataset helpers ────────────────────────────────────────────
+    def dry_run(self):
+        _, manifest = load_dataset(self.config.dataset_path)
+        return {"status": "validated_only", "trained": False, "dataset": manifest}
 
-    def prepare_dataset(self, dataset_path: str) -> Dict[str, Any]:
-        """Load (or synthesise) the training dataset.
+    def setup_model_and_lora(self):
+        import torch
 
-        Returns dict with keys ``train``, ``validation``, ``test``.
-        """
-        path = Path(dataset_path)
-        if path.exists():
-            logger.info("Loading dataset from %s", path)
-            data = (
-                self._load_jsonl(path) if path.suffix == ".jsonl"
-                else self._load_json(path)
+        if not torch.cuda.is_available():
+            raise RuntimeError(
+                "7B training requires a configured CUDA GPU. No training occurred; no cloud GPU was started."
             )
-        else:
-            logger.warning(
-                "Dataset %s not found – using synthetic data.", dataset_path
-            )
-            data = self._synthetic_dataset()
+        from transformers import AutoModel, BitsAndBytesConfig
+        from peft import LoraConfig, get_peft_model, prepare_model_for_kbit_training
 
-        random.seed(self.config.seed)
-        random.shuffle(data)
-        n = len(data)
-        train_end = int(n * 0.80)
-        val_end = train_end + int(n * 0.10)
-        return {
-            "train": data[:train_end],
-            "validation": data[train_end:val_end],
-            "test": data[val_end:],
+        kwargs = {
+            "trust_remote_code": True,
+            "local_files_only": True,
+            "torch_dtype": torch.bfloat16,
+            "attn_implementation": "sdpa",
+            "device_map": {"": torch.cuda.current_device()},
         }
-
-    # ── model / LoRA helpers ───────────────────────────────────────
-
-    def setup_model_and_lora(self) -> tuple:
-        """Return ``(model, peft_config)`` (mocked)."""
-        logger.info("Loading base model: %s", self.config.base_model)
-        self._peft_config = MockPeftConfig(
+        if self.config.use_qlora:
+            kwargs["quantization_config"] = BitsAndBytesConfig(
+                load_in_4bit=True,
+                bnb_4bit_quant_type="nf4",
+                bnb_4bit_use_double_quant=True,
+                bnb_4bit_compute_dtype=torch.bfloat16,
+            )
+        model = AutoModel.from_pretrained(self.config.base_model, **kwargs)
+        # Freeze vision; adapt language attention and MLP only.
+        for parameter in model.parameters():
+            parameter.requires_grad = False
+        if self.config.use_qlora:
+            model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
+        lora = LoraConfig(
             r=self.config.lora_r,
             lora_alpha=self.config.lora_alpha,
             lora_dropout=self.config.lora_dropout,
-            target_modules=["q_proj", "v_proj"],
+            target_modules=r"language_model\.model\.layers\.\d+\.(self_attn\.(q_proj|k_proj|v_proj|o_proj)|mlp\.(gate_proj|up_proj|down_proj))",
+            bias="none",
         )
-        self._model = MockModel(self.config.base_model)
-        return self._model, self._peft_config
-
-    # ── core training ─────────────────────────────────────────────
-
-    def train(self) -> Dict[str, Any]:
-        """Run SFT. Falls back to dry-run on CPU-only."""
-        logger.info("Starting SFT …")
-        dataset = self.prepare_dataset(
-            str(self.output_path.parent / "dataset.jsonl")
+        self._model = get_peft_model(model, lora)
+        self._model.config.use_cache = False
+        self._model.enable_input_require_grads()
+        self._model.gradient_checkpointing_enable(
+            gradient_checkpointing_kwargs={"use_reentrant": False}
         )
-        model, peft_config = self.setup_model_and_lora()
+        return self._model, lora
 
-        # Determine whether we have a real GPU (not just CPU/MPS)
-        has_real_gpu = False
-        try:
-            torch = _torch()
-            has_real_gpu = torch.cuda.is_available()
-        except ImportError:
-            pass
-
-        if not has_real_gpu:
-            return self._dry_run(dataset)
-
-        start = time.time()
-        metrics = self._mock_training_loop(dataset, model, peft_config)
-        elapsed = time.time() - start
-
-        self.save_model()
-        self._write_metrics(metrics)
-        self._write_training_log(
-            f"Training completed in {elapsed:.1f}s. "
-            f"GPU: {self.gpu_used}\n"
-        )
-        logger.info("SFT finished. Metrics: %s", metrics)
-        return metrics
-
-    def resume_from_checkpoint(self, ckpt_path: str) -> Dict[str, Any]:
-        """Continue training from a previously saved checkpoint."""
-        ckpt = Path(ckpt_path)
-        if not ckpt.exists():
-            raise FileNotFoundError(f"Checkpoint not found: {ckpt_path}")
-        logger.info("Resuming from checkpoint: %s", ckpt)
-        metrics = self.train()
-        metrics["resumed_from"] = str(ckpt)
-        return metrics
-
-    def save_model(self) -> Path:
-        """Persist the LoRA adapter to *output_dir*."""
-        adapter_dir = self.output_path / "lora_adapter"
-        adapter_dir.mkdir(parents=True, exist_ok=True)
-        adapter_file = adapter_dir / "adapter_model.bin"
-        adapter_file.write_text("mock-lora-weights")
-        logger.info("LoRA adapter saved to %s", adapter_dir)
-        return adapter_dir
-
-    def export_for_inference(self) -> Path:
-        """Merge LoRA weights into the base model and save."""
-        export_dir = self.output_path / "merged_model"
-        export_dir.mkdir(parents=True, exist_ok=True)
-        (export_dir / "model.bin").write_text("mock-merged-weights")
-        logger.info("Merged model exported to %s", export_dir)
-        return export_dir
-
-    def dry_run(self) -> Dict[str, Any]:
-        """Simulate training without any GPU."""
-        dataset = self.prepare_dataset(
-            str(self.output_path.parent / "dataset.jsonl")
-        )
-        return self._dry_run(dataset)
-
-    # ── private helpers ────────────────────────────────────────────
-
-    def _dry_run(self, dataset: Dict[str, Any]) -> Dict[str, Any]:
-        self._write_training_log("Dry-run (CPU/MPS) – no actual backprop.\n")
-        metrics = {
-            "stage": "sft",
-            "train_loss": 2.1,
-            "eval_loss": 2.35,
-            "epochs": self.config.num_epochs,
-            "status": "synthetic_dry_run",
-            "gpu_used": self.gpu_used,
-        }
-        self._write_metrics(metrics)
-        return metrics
-
-    def _mock_training_loop(
-        self, dataset: Dict[str, Any], model: Any, peft_config: Any
-    ) -> Dict[str, Any]:
-        """Lightweight stand-in for a real training loop."""
-        n_train = len(dataset["train"])
-        train_loss = 2.0
-        for epoch in range(self.config.num_epochs):
-            for step in range(max(1, n_train // self.config.batch_size)):
-                train_loss *= 0.90
-        eval_loss = train_loss * 1.05
-        return {
-            "stage": "sft",
-            "train_loss": round(train_loss, 4),
-            "eval_loss": round(eval_loss, 4),
-            "epochs": self.config.num_epochs,
-            "status": "completed",
-            "gpu_used": self.gpu_used,
-        }
-
-    def _write_metrics(self, metrics: Dict[str, Any]) -> None:
-        (self.output_path / "metrics.json").write_text(
-            json.dumps(metrics, indent=2)
-        )
-
-    def _write_training_log(self, message: str) -> None:
-        log_file = self.output_path / "training.log"
-        with open(log_file, "a") as fh:
-            fh.write(message)
-
-    @staticmethod
-    def _load_json(path: Path) -> list:
-        with open(path) as fh:
-            data = json.load(fh)
-        if isinstance(data, dict):
-            data = data.get("data", data.get("examples", []))
-        return data
-
-    @staticmethod
-    def _load_jsonl(path: Path) -> list:
-        items = []
-        with open(path) as fh:
-            for line in fh:
-                line = line.strip()
-                if line:
-                    items.append(json.loads(line))
-        return items
-
-    @staticmethod
-    def _synthetic_dataset() -> list:
-        modules = ["FI", "MM", "SD", "PP", "HR"]
-        actions = [
-            "Click the Deploy button",
-            "Enter '1000' in the Material field",
-            "Select 'Create' from the menu",
-            "Press Enter to confirm",
-            "Navigate to the next screen",
-        ]
-        data = []
-        for i in range(10):
-            data.append(
-                {
-                    "instruction": actions[i % len(actions)],
-                    "response": f"Action completed successfully (#{i})",
-                    "image_path": f"/tmp/sap_screenshot_{i}.png",
-                    "module": modules[i % len(modules)],
-                }
+    def train(self, *, resume_from_checkpoint: str | None = None):
+        splits, manifest = load_dataset(self.config.dataset_path)
+        if (
+            self.output_path.exists()
+            and any(self.output_path.iterdir())
+            and resume_from_checkpoint is None
+        ):
+            raise ValueError(
+                "Output directory is not empty; use a new directory or resume an actual checkpoint"
             )
-        return data
+        import torch
+        from transformers import Trainer, TrainingArguments, set_seed
+
+        set_seed(self.config.seed)
+        self.runtime.load_processor()
+        # Fail on oversized samples; truncating image tokens corrupts the input.
+        runtime, config = self.runtime, self.config
+
+        class ScreenshotDataset(torch.utils.data.Dataset):
+            def __init__(self, rows):
+                self.rows = rows
+
+            def __len__(self):
+                return len(self.rows)
+
+            def __getitem__(self, index):
+                row = self.rows[index]
+                with Image.open(row["image_path"]) as image:
+                    sample = runtime.prepare(image, row["instruction"], row["response"])
+                if sample["input_ids"].shape[1] > config.max_seq_length:
+                    raise ValueError(
+                        "Example exceeds max_seq_length; reduce image budget or instruction size"
+                    )
+                return sample
+
+        model, _ = self.setup_model_and_lora()
+        self.output_path.mkdir(parents=True, exist_ok=True)
+        (self.output_path / "dataset-manifest.json").write_text(json.dumps(manifest, indent=2))
+        (self.output_path / "training-config.json").write_text(config.model_dump_json(indent=2))
+        args = TrainingArguments(
+            output_dir=str(self.output_path),
+            per_device_train_batch_size=1,
+            per_device_eval_batch_size=1,
+            gradient_accumulation_steps=config.gradient_accumulation_steps,
+            learning_rate=config.learning_rate,
+            num_train_epochs=config.num_epochs,
+            max_steps=config.max_steps,
+            bf16=True,
+            warmup_ratio=config.warmup_ratio,
+            logging_steps=config.logging_steps,
+            save_steps=config.save_steps,
+            save_total_limit=2,
+            eval_strategy="steps",
+            eval_steps=config.save_steps,
+            remove_unused_columns=False,
+            report_to=[],
+            label_names=["labels"],
+            seed=config.seed,
+        )
+        trainer = Trainer(
+            model=model,
+            args=args,
+            train_dataset=ScreenshotDataset(splits["train"]),
+            eval_dataset=ScreenshotDataset(splits["validation"]),
+            data_collator=single_example_collator,
+        )
+        result = trainer.train(resume_from_checkpoint=resume_from_checkpoint)
+        metrics = {
+            **result.metrics,
+            **trainer.evaluate(),
+            "status": "trained",
+            "dataset_sha256": manifest["sha256"],
+        }
+        self.save_model()
+        (self.output_path / "metrics.json").write_text(json.dumps(metrics, indent=2))
+        return metrics
+
+    def resume_from_checkpoint(self, ckpt_path: str):
+        checkpoint = Path(ckpt_path)
+        if not (checkpoint / "trainer_state.json").is_file():
+            raise FileNotFoundError("A real Trainer checkpoint with trainer_state.json is required")
+        previous_manifest = self.output_path / "dataset-manifest.json"
+        _, manifest = load_dataset(self.config.dataset_path)
+        if (
+            not previous_manifest.exists()
+            or json.loads(previous_manifest.read_text())["sha256"] != manifest["sha256"]
+        ):
+            raise ValueError("Dataset changed or original manifest is missing")
+        return self.train(resume_from_checkpoint=str(checkpoint))
+
+    def save_model(self):
+        if self._model is None:
+            raise RuntimeError("No model has been trained or loaded")
+        destination = self.output_path / "lora_adapter"
+        self._model.save_pretrained(destination, safe_serialization=True)
+        return destination
+
+    def export_for_inference(self):
+        if self._model is None:
+            raise RuntimeError("No model has been loaded")
+        if self.config.use_qlora:
+            raise RuntimeError("Reload the adapter against a non-quantized base before merging")
+        destination = self.output_path / "merged_model"
+        self._model.merge_and_unload().save_pretrained(destination, safe_serialization=True)
+        return destination
 
 
-# ── Lightweight stubs ──────────────────────────────────────────────
-
-class MockModel:
-    """Stand-in for a HuggingFace transformers model."""
-
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.device = "cpu"
-
-
-class MockPeftConfig:
-    """Stand-in for ``peft.LoraConfig``."""
-
-    def __init__(self, r: int, lora_alpha: int, lora_dropout: float, target_modules: list) -> None:
-        self.r = r
-        self.lora_alpha = lora_alpha
-        self.lora_dropout = lora_dropout
-        self.target_modules = target_modules
+def single_example_collator(samples):
+    if len(samples) != 1:
+        raise ValueError("Variable image grids require batch size 1; use gradient accumulation")
+    return samples[0]

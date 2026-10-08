@@ -98,18 +98,4 @@ class RLTrainer:
         }
 
     def train(self, episodes: int = 1000) -> dict[str, Any]:
-        """Run RL training loop (synthetic metrics without GPU)."""
-        self.output_path.mkdir(parents=True, exist_ok=True)
-        metrics = {
-            "stage": "rl",
-            "algorithm": "GRPO",
-            "base_model": self.base_model,
-            "episodes": episodes,
-            "mean_reward": 2.5,
-            "policy_loss": 0.15,
-            "value_loss": 0.20,
-            "success_rate": 0.65,
-            "status": "completed_synthetic",
-        }
-        (self.output_path / "metrics.json").write_text(json.dumps(metrics, indent=2))
-        return metrics
+        raise NotImplementedError("RL policy optimization is not implemented. Episode scoring does not train weights.")
