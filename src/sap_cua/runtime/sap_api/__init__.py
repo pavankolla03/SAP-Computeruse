@@ -7,6 +7,7 @@ Tenant permissions, CSRF requirements and supported resources need tenant valida
 from __future__ import annotations
 
 import base64
+import math
 import os
 import re
 import time
@@ -46,6 +47,7 @@ class SAPAPIClient:
         *,
         token_url: str = "",
         allow_mutations: bool = False,
+        timeout_seconds: float = 30,
         transport: httpx.BaseTransport | None = None,
     ):
         self.api_base = secure_url(
@@ -60,8 +62,12 @@ class SAPAPIClient:
             raise ValueError(
                 "SAP OAuth credentials are required; use SAPMockEnvironment explicitly for simulation"
             )
+        if not 0 < timeout_seconds <= 60:
+            raise ValueError("SAP request timeout must be between 0 and 60 seconds")
         self.allow_mutations = allow_mutations
-        self._client = httpx.Client(transport=transport, timeout=30, follow_redirects=False)
+        self._client = httpx.Client(
+            transport=transport, timeout=timeout_seconds, follow_redirects=False, trust_env=False
+        )
         self._csrf = ""
         self._token = ""
         self._expires = 0.0
@@ -88,9 +94,18 @@ class SAPAPIClient:
                 f"SAP OAuth failed (HTTP {response.status_code}); response body withheld"
             )
         payload = response.json()
+        if (
+            not isinstance(payload, dict)
+            or not isinstance(payload.get("access_token"), str)
+            or not 1 <= len(payload["access_token"]) <= 8192
+        ):
+            raise RuntimeError("Invalid OAuth response")
+        lifetime = float(payload.get("expires_in", 300))
+        if not math.isfinite(lifetime) or lifetime <= 0:
+            raise RuntimeError("Invalid OAuth lifetime")
         self._csrf = ""
         self._token = payload["access_token"]
-        self._expires = time.monotonic() + max(0, float(payload.get("expires_in", 300)) - 30)
+        self._expires = time.monotonic() + max(0, lifetime - 30)
         return self._token
 
     def _request(self, method: str, resource: str, *, body=None, params=None) -> dict[str, Any]:
@@ -101,16 +116,26 @@ class SAPAPIClient:
                 "error": "Live mutations require explicit authorization",
                 "backend": "sap_api",
             }
+        request_started = False
         try:
-            headers = {'Authorization':'Bearer '+self._access_token(),'Accept':'application/json'}
-            if method != 'GET':
+            headers = {
+                "Authorization": "Bearer " + self._access_token(),
+                "Accept": "application/json",
+            }
+            if method != "GET":
                 if not self._csrf:
-                    csrf_response = self._client.get(self.api_base+'/IntegrationPackages',
-                        headers={**headers,'X-CSRF-Token':'Fetch'},params={'$top':1})
-                    if csrf_response.status_code != 200 or not csrf_response.headers.get('X-CSRF-Token'):
-                        raise RuntimeError('CSRF preflight failed; mutation was not attempted')
-                    self._csrf = csrf_response.headers['X-CSRF-Token']
-                headers['X-CSRF-Token'] = self._csrf
+                    csrf_response = self._client.get(
+                        self.api_base + "/IntegrationPackages",
+                        headers={**headers, "X-CSRF-Token": "Fetch"},
+                        params={"$top": 1},
+                    )
+                    if csrf_response.status_code != 200 or not csrf_response.headers.get(
+                        "X-CSRF-Token"
+                    ):
+                        raise RuntimeError("CSRF preflight failed; mutation was not attempted")
+                    self._csrf = csrf_response.headers["X-CSRF-Token"]
+                headers["X-CSRF-Token"] = self._csrf
+            request_started = True
             response = self._client.request(
                 method,
                 self.api_base + "/" + resource,
@@ -121,7 +146,8 @@ class SAPAPIClient:
             # Acceptance of deployment is NOT proof the runtime reached STARTED.
             success = 200 <= response.status_code < 300
             if not success:
-                if response.status_code == 403:self._csrf = ""
+                if response.status_code == 403:
+                    self._csrf = ""
                 return {
                     "success": False,
                     "data": None,
@@ -135,6 +161,8 @@ class SAPAPIClient:
                 data = response.json()
                 if isinstance(data, dict):
                     data = data.get("d", data)
+                if isinstance(data, str):
+                    data = {"task_id": data}
             else:
                 data = {"task_id": response.text.strip().strip('"')}
             return {
@@ -144,14 +172,40 @@ class SAPAPIClient:
                 "error": None,
                 "backend": "sap_api",
             }
-        except (httpx.HTTPError, RuntimeError, KeyError, ValueError) as exc:
+        except (
+            httpx.HTTPError,
+            RuntimeError,
+            KeyError,
+            ValueError,
+            TypeError,
+            OverflowError,
+        ) as exc:
             # Never include request headers, credentials, response bodies, or untrusted exception text.
             return {
                 "success": False,
                 "data": None,
                 "error": f"SAP request failed ({type(exc).__name__}); writes were not retried",
+                "outcome": "unknown" if request_started else "not_sent",
                 "backend": "sap_api",
             }
+
+    def list_packages(self, limit: int = 1):
+        if not 1 <= limit <= 100:
+            raise ValueError("Package limit must be 1–100")
+        return self._request("GET", "IntegrationPackages", params={"$top": limit, "$select": "Id"})
+
+    def list_runtime_artifacts(self, limit: int = 1):
+        if not 1 <= limit <= 100:
+            raise ValueError("Runtime limit must be 1–100")
+        return self._request(
+            "GET", "IntegrationRuntimeArtifacts", params={"$top": limit, "$select": "Id,Status"}
+        )
+
+    def get_iflow(self, iflow_id: str, version: str = "active"):
+        return self._request(
+            "GET",
+            f"IntegrationDesigntimeArtifacts(Id='{identifier(iflow_id)}',Version='{identifier(version)}')",
+        )
 
     def create_package(self, name: str, description: str = "", *, package_id: str | None = None):
         return self._request(
@@ -214,6 +268,8 @@ class SAPAPIClient:
     def query_mpl(self, filters: dict[str, Any] | None = None, limit: int = 100):
         if not 1 <= limit <= 500:
             raise ValueError("MPL limit must be between 1 and 500")
+        if "$top" in (filters or {}):
+            raise ValueError("Use the validated limit argument for MPL bounds")
         params = {"$top": limit, "$orderby": "LogStart desc", **(filters or {})}
         if set(params) - {"$top", "$orderby", "$filter", "$skip", "$select"}:
             raise ValueError("Unsupported MPL query option")

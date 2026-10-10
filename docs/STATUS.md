@@ -1,4 +1,4 @@
-# RAG V1 status — 9 October 2026
+# RAG V1 status — 10 October 2026
 
 Working local application; real SAP execution remains unvalidated.
 
@@ -19,7 +19,7 @@ Working local application; real SAP execution remains unvalidated.
 | Costs/observability | Reservations before optional paid calls; OTel spans/counters | Real provider usage/pricing, collector configuration |
 | Fine-tuning | Explicit decision: unnecessary for V1 | Empirical residual weakness + separate budget approval |
 
-356 unit/contract/integration tests pass in a clean locked Python 3.12 environment without
+386 unit/contract/integration tests pass in a clean locked Python 3.12 environment without
 Torch, Transformers, or PEFT; the PostgreSQL test is enabled through its test DSN.
 Real PostgreSQL and browser integrations are validated outside that unit count.
 
@@ -29,3 +29,13 @@ Plan-only has no execution success metric. Known 401/429/timeout cases diagnose,
 not repair. No production target percentages or paid model results are claimed.
 
 Source reference for CSRF: [SAP Integration Content documentation](https://github.com/SAP-docs/btp-integration-suite/blob/main/docs/ci/Development/integration-content-d1679a8.md).
+
+## Connection and observation update
+
+The dashboard now exposes missing DEV configuration and a read-only connection
+probe. CLI deployment and MPL verifiers require observed build/runtime readiness
+and fresh correlated message identity/timestamps. Contract tests cover denied
+access, malformed OAuth, HTML login responses, wrong artifacts, stale messages,
+uncertain request outcomes and bounded polling. A false-positive package-existence
+path was corrected. No live tenant request was made in this update. See
+[SAP connection setup and limits](SAP_CONNECTION.md).

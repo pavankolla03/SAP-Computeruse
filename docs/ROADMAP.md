@@ -1,6 +1,6 @@
 # Next gates
 
-1. Connect a DEV tenant read-only. Verify tenant identity, OAuth scope, package,
+1. Configure the implemented read-only connection probe with a DEV service key. Verify tenant identity, OAuth scope, package,
    artifact and MPL access. Keep credentials outside prompts and run records.
 2. Inspect an approved exported iFlow and its externalized parameters. Instantiate
    the canonical patterns against its real XML contract; validate upload/readback.

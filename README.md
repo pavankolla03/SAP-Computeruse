@@ -22,7 +22,8 @@ uv run sap-cua rag init
 uv run sap-cua serve --port 8765
 ```
 
-Open http://127.0.0.1:8765. `rag init` creates pgvector/schema and incrementally
+Open http://127.0.0.1:8765. The SAP DEV connection panel and `sap-cua sap probe`
+provide read-only readiness checks; see [connection setup](docs/SAP_CONNECTION.md). `rag init` creates pgvector/schema and incrementally
 indexes the included original engineering notes. The local CLI reads `.env`.
 Keep database passwords URL-encoded in the DSN and never commit populated secrets.
 

@@ -29,6 +29,8 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False, rag_ser
 
     @asynccontextmanager
     async def lifespan(app):
+        from sap_cua.runtime.sap_api.connection import ConnectionService
+        app.state.sap = ConnectionService()
         app.state.store = RunStore(directory)
         app.state.store.recover_interrupted()
         from sap_cua.engineering.service import RAGService
@@ -108,6 +110,8 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False, rag_ser
 
     from sap_cua.api.routes.rag import router as rag_router
     app.include_router(rag_router, prefix="/api/rag")
+    from sap_cua.api.routes.sap import router as sap_router
+    app.include_router(sap_router,prefix="/api/sap")
     return app
 
 

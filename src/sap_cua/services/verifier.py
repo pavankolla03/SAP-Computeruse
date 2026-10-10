@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 
 def verify_package_exists(env: Any, package_id: str) -> dict[str, Any]:
     """Verify that a package exists in the SAP environment."""
+    from sap_cua.runtime.sap_api import SAPAPIClient
+    if isinstance(env,SAPAPIClient):
+        from sap_cua.runtime.sap_api.verification import verify_package
+        return verify_package(env,package_id)
     result = env.get_package(package_id)
     if result is None:
         return {"success": False, "reason": f"Package {package_id} not found"}

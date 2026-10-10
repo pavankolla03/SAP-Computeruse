@@ -3,3 +3,5 @@
 main.sapworld{margin-left:0;max-width:1000px}input{background:#0b121c;color:#dce5eb;border:1px solid #354454;border-radius:5px;padding:12px;margin:10px 15px 20px 0;font:inherit}main.sapworld .panel label{font-size:11px}
 #requirement{height:150px;font-family:inherit;font-size:15px;line-height:1.7;color:#dce5eb}#knowledge{margin-top:24px}.search-row{display:flex;gap:12px;align-items:center}.search-row input{width:100%;margin:10px 0}.source-card{padding:18px 0;border-top:1px solid #24303d}.source-card strong{font-size:13px}.source-card small{overflow-wrap:anywhere}.plan-step{padding:8px 0;font:11px/1.5 ui-monospace,monospace;border-bottom:1px solid #23313b;overflow-wrap:anywhere}#plan-summary{margin-top:15px}#trace{max-height:590px;overflow:auto}.panel{min-width:0}.search-row button{flex-shrink:0}@media(max-width:650px){.panel{padding:18px}.search-row{flex-wrap:wrap}.history-row{flex-wrap:wrap}}
 aside{top:0;left:0}
+
+#connection{margin-top:24px}#sap-checks{margin:18px 0}.connection-check{padding:10px 0;border-bottom:1px solid #24303d;font-size:12px}

@@ -12,6 +12,9 @@ def main() -> int:
 
     load_dotenv(Path.cwd() / ".env", override=False)
     import sys
+    if len(sys.argv)>1 and sys.argv[1]=='sap':
+        from sap_cua.runtime.sap_api.cli import main as sap_main
+        return sap_main(sys.argv[2:])
     if len(sys.argv)>1 and sys.argv[1]=='rag':
         from sap_cua.rag.cli import main as rag_main
         return rag_main(sys.argv[2:])
@@ -22,6 +25,7 @@ def main() -> int:
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--data-dir", default=os.getenv("SAP_CUA_DATA_DIR", ".sap-cua"))
     commands.add_parser("rag", help="Initialize, ingest, search, plan, run, or benchmark the RAG workspace")
+    commands.add_parser("sap", help="Check SAP connection and verify deployment/message evidence (read-only)")
     commands.add_parser("doctor", help="Report capabilities and remaining setup")
     download = commands.add_parser("download-model", help="Download the pinned OpenCUA checkpoint")
     download.add_argument("--destination", default=".models/OpenCUA-7B")
