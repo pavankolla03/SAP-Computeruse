@@ -6,6 +6,8 @@ from sap_cua.rag.schemas import Scope
 def route_collections(query: str) -> list[str]:
     q = query.lower()
     domains = {
+        "sap_docs",
+        "integration_suite",
         "cloud_integration",
         "architecture_patterns",
         "customer_standards",

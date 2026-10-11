@@ -52,6 +52,12 @@ uv run sap-cua rag benchmark
 uv run pytest -q
 ```
 
+## Workspace features
+
+Add approved text directly from the Knowledge panel, filter searches by collection,
+reopen saved plans after refresh, and download sanitized run evidence. See the
+[workspace guide](docs/WORKSPACE_FEATURES.md) for versioning and execution boundaries.
+
 ## Implemented
 
 - Strict knowledge schema, content hashes, embedding asset fingerprints, incremental

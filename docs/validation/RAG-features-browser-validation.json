@@ -1,0 +1,12 @@
+{
+  "stale_plan_race": true,
+  "saved_plan_resume": true,
+  "completed_run_not_replayed": true,
+  "evidence_download": true,
+  "postgres_document_import": true,
+  "incremental_import": true,
+  "document_retrieval": true,
+  "mobile_no_overflow": true,
+  "live_sap": false,
+  "browser_errors": []
+}

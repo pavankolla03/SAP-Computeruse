@@ -1,4 +1,4 @@
-# RAG V1 status — 10 October 2026
+# RAG V1 status — 11 October 2026
 
 Working local application; real SAP execution remains unvalidated.
 
@@ -19,7 +19,7 @@ Working local application; real SAP execution remains unvalidated.
 | Costs/observability | Reservations before optional paid calls; OTel spans/counters | Real provider usage/pricing, collector configuration |
 | Fine-tuning | Explicit decision: unnecessary for V1 | Empirical residual weakness + separate budget approval |
 
-386 unit/contract/integration tests pass in a clean locked Python 3.12 environment without
+401 unit/contract/integration tests pass in a clean locked Python 3.12 environment without
 Torch, Transformers, or PEFT; the PostgreSQL test is enabled through its test DSN.
 Real PostgreSQL and browser integrations are validated outside that unit count.
 
@@ -39,3 +39,12 @@ access, malformed OAuth, HTML login responses, wrong artifacts, stale messages,
 uncertain request outcomes and bounded polling. A false-positive package-existence
 path was corrected. No live tenant request was made in this update. See
 [SAP connection setup and limits](SAP_CONNECTION.md).
+
+## Workspace feature update
+
+Added tenant-scoped approved text import, incremental updates, collection filtering,
+reopening saved plans and sanitized evidence downloads. Full plans are retained in
+new execution records. Fixed stale planning responses, blank request validation and
+missing generic-document retrieval routes. Chromium exercised the delayed-response
+race, save/reload/reopen/execute flow, real PostgreSQL import/search, deduplication
+and mobile layout. See [workspace features](WORKSPACE_FEATURES.md).

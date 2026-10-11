@@ -190,6 +190,7 @@ class EngineeringEngine:
             "tenant": scope.tenant,
             "backend": "sandbox",
             "planner": plan.planner,
+            "plan": plan.model_dump(),
             "sources": plan.sources,
             "steps": [],
             "usage": {

@@ -5,3 +5,5 @@ main.sapworld{margin-left:0;max-width:1000px}input{background:#0b121c;color:#dce
 aside{top:0;left:0}
 
 #connection{margin-top:24px}#sap-checks{margin:18px 0}.connection-check{padding:10px 0;border-bottom:1px solid #24303d;font-size:12px}
+
+.download-link{display:inline-block;margin-top:16px;color:#72e1c5;font-size:12px}.download-link[hidden]{display:none}select{max-width:100%;padding:10px;background:#0b121c;border:1px solid #354454;border-radius:5px;color:#dce5eb;font:inherit}#knowledge-form>input{width:100%;margin:0}#knowledge-content{height:200px;font-family:inherit}#knowledge-form .approval-label{display:flex;align-items:center;gap:10px;letter-spacing:0;font-size:12px;line-height:1.5;text-transform:none}#knowledge-approved{margin:0}.knowledge-fields{display:grid;grid-template-columns:1fr 1fr;gap:20px}.knowledge-fields input{width:100%;margin:0}.knowledge-fields select{width:100%}@media(max-width:650px){.knowledge-fields{grid-template-columns:1fr;gap:0}}
