@@ -63,7 +63,7 @@ class RAGService:
 
     def get_run(self, id):
         result = self.run_store.get(id)
-        if result and (result.get("customer"), result.get("tenant")) == (
+        if result and result.get("type") != "live_template" and (result.get("customer"), result.get("tenant")) == (
             self.scope.customer,
             self.scope.tenant,
         ):
@@ -91,4 +91,5 @@ class RAGService:
             raise
 
     def runs(self):
-        return self.run_store.list_scope(self.scope.customer, self.scope.tenant)
+        return [run for run in self.run_store.list_scope(self.scope.customer, self.scope.tenant)
+                if run.get("type") != "live_template"]

@@ -18,7 +18,7 @@ from sap_cua.sap.mocks import SAPMockEnvironment
 from sap_cua.security import sanitize_data
 from sap_cua.services.executor_router import ExecutorContext, ExecutorRouter
 from sap_cua.services.verifier import verify_task_state
-from sap_cua.types import SAPAction, RiskLevel
+from sap_cua.types import RiskLevel, SAPAction
 
 
 class Workflow(BaseModel):
@@ -64,12 +64,14 @@ def example_workflow() -> dict[str, Any]:
 
 class RunStore:
     def __init__(self, directory: Path):
-        directory.mkdir(parents=True, exist_ok=True)
+        directory.mkdir(parents=True, exist_ok=True, mode=0o700)
+        directory.chmod(0o700)
         self.path = directory / "runs.sqlite3"
         with self.connect() as db:
             db.execute(
                 "CREATE TABLE IF NOT EXISTS runs (id TEXT PRIMARY KEY, created REAL NOT NULL, status TEXT NOT NULL, body TEXT NOT NULL)"
             )
+        self.path.chmod(0o600)
 
     @contextmanager
     def connect(self):
@@ -192,7 +194,7 @@ def execute_workflow(workflow: Workflow, store: RunStore) -> dict[str, Any]:
         run["status"] = "succeeded" if run["success"] else "failed"
         if not run["success"]:
             run["error"] = "Final state did not satisfy the task verifier"
-    except Exception as exc:
+    except Exception as exc:  # noqa: BLE001 - persist a terminal sandbox failure
         run.update(status="failed", error=str(exc), success=False)
     run["duration_ms"] = round((time.monotonic() - start) * 1000)
     run["state"] = {"packages": env.packages, "iflows": env.iFlows}

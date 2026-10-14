@@ -7,8 +7,10 @@ import os
 import secrets
 from contextlib import asynccontextmanager
 from pathlib import Path
+from threading import Thread
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.exceptions import RequestValidationError
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from starlette.middleware.trustedhost import TrustedHostMiddleware
@@ -22,24 +24,79 @@ from sap_cua.services.workbench import (
 )
 
 
-def create_app(data_dir: Path | None = None, *, test_mode: bool = False, rag_service=None) -> FastAPI:
+def create_app(
+    data_dir: Path | None = None, *, test_mode: bool = False, rag_service=None
+) -> FastAPI:
     directory = data_dir or Path(os.getenv("SAP_CUA_DATA_DIR", ".sap-cua"))
     token = secrets.token_urlsafe(32)
     web = Path(__file__).parents[1] / "web"
 
     @asynccontextmanager
     async def lifespan(app):
-        from sap_cua.runtime.sap_api.connection import ConnectionService
-        app.state.sap = ConnectionService()
+        from sap_cua.engineering.live import LiveService
+        from sap_cua.rag.schemas import Scope
+        from sap_cua.runtime.sap_api.profiles import ConnectionProfiles
+
+        app.state.sap = ConnectionProfiles()
         app.state.store = RunStore(directory)
         app.state.store.recover_interrupted()
         from sap_cua.engineering.service import RAGService
-        app.state.rag = rag_service if rag_service is not None else RAGService.from_environment(app.state.store)
+
+        app.state.rag = rag_service
+        app.state.rag_error = None
+        app.state.scope = (
+            rag_service.scope
+            if rag_service
+            else Scope(
+                customer=os.getenv("SAP_CUA_CUSTOMER", "local"),
+                tenant=os.getenv("SAP_CUA_TENANT", "dev"),
+                role="engineer",
+            )
+        )
+        app.state.live = LiveService(
+            directory,
+            app.state.store,
+            app.state.scope,
+            app.state.sap,
+            retriever=rag_service.retriever if rag_service else None,
+            ingestor=rag_service.ingestor if rag_service else None,
+        )
+
+        # Connection setup and live evidence must remain accessible if a RAG model
+        # download or database initialization is unavailable. No mock fallback.
+        def initialize_rag():
+            try:
+                instance = RAGService.from_environment(app.state.store)
+                if instance:
+                    instance.store.migrate()
+                    instance.seed()
+                    app.state.rag = instance
+                    app.state.live.retriever = instance.retriever
+                    app.state.live.ingestor = instance.ingestor
+            except Exception as exc:  # noqa: BLE001 - no credential-bearing exception text
+                app.state.rag_error = type(exc).__name__
+
+        if rag_service is None and os.getenv("SAP_CUA_DATABASE_URL"):
+            Thread(target=initialize_rag, name="rag-initialization", daemon=True).start()
         yield
 
     app = FastAPI(
         title="SAP-CUA Workbench", version="0.3.0", lifespan=lifespan, docs_url=None, redoc_url=None
     )
+
+    @app.exception_handler(RequestValidationError)
+    async def safe_validation_error(request, exc):
+        # Default FastAPI errors echo rejected input, including connection secrets.
+        return JSONResponse(
+            {
+                "detail": [
+                    {"loc": error["loc"], "type": error["type"], "msg": "Invalid field value"}
+                    for error in exc.errors()
+                ]
+            },
+            status_code=422,
+        )
+
     hosts = ["127.0.0.1", "localhost", "[::1]"] + (["testserver"] if test_mode else [])
 
     @app.middleware("http")
@@ -109,9 +166,14 @@ def create_app(data_dir: Path | None = None, *, test_mode: bool = False, rag_ser
             raise HTTPException(422, str(exc)) from exc
 
     from sap_cua.api.routes.rag import router as rag_router
+
     app.include_router(rag_router, prefix="/api/rag")
     from sap_cua.api.routes.sap import router as sap_router
-    app.include_router(sap_router,prefix="/api/sap")
+
+    app.include_router(sap_router, prefix="/api/sap")
+    from sap_cua.api.routes.live import router as live_router
+
+    app.include_router(live_router, prefix="/api/live")
     return app
 
 

@@ -1,0 +1,19 @@
+{
+  "real_app_api": true,
+  "external_sap_transport": "fixture",
+  "live_sap": false,
+  "session_credentials_cleared": true,
+  "probe": true,
+  "artifact_import_and_render": true,
+  "stale_review_rejected": true,
+  "saved_plan_restore": true,
+  "history_edit_race_rejected": true,
+  "cancel_releases_controls": true,
+  "run_polling": true,
+  "reload_resume": true,
+  "cancel": true,
+  "no_auto_replay": true,
+  "no_browser_secret_storage": true,
+  "mobile_no_overflow": true,
+  "javascript_errors": []
+}

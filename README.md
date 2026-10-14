@@ -3,6 +3,9 @@
 A local SAP Integration Suite engineering workbench. Describe a supported
 integration, retrieve scoped knowledge, inspect a semantic plan, execute it in a
 fresh simulator, and retain independently verified trajectories as knowledge.
+The SAP DEV workflow imports an approved exported iFlow, uploads and deploys it,
+sends a controlled test, and verifies the exact fresh message log. Its tenant
+acceptance remains unvalidated; see the [live workflow guide](docs/LIVE_WORKFLOW.md).
 **No fine-tuning or 7B model is required.**
 
 `Finetune` preserves the previous implementation. `RAG` contains this application.
@@ -18,18 +21,19 @@ python -m pip install uv==0.12.23
 uv sync --frozen --extra dev
 cp .env.example .env
 # Configure SAP_CUA_DATABASE_URL for your local PostgreSQL database.
-uv run sap-cua rag init
 uv run sap-cua serve --port 8765
 ```
 
-Open http://127.0.0.1:8765. The SAP DEV connection panel and `sap-cua sap probe`
-provide read-only readiness checks; see [connection setup](docs/SAP_CONNECTION.md). `rag init` creates pgvector/schema and incrementally
-indexes the included original engineering notes. The local CLI reads `.env`.
+Open http://127.0.0.1:8765. The connection panel accepts session-only DEV credentials;
+read-only readiness checks are also available through `sap-cua sap probe`.
+Database and CPU-model initialization and seed indexing run in the background.
+The setup UI remains accessible if retrieval is unavailable. `sap-cua rag init`
+is also available for explicit initialization. The local CLI reads `.env`.
 Keep database passwords URL-encoded in the DSN and never commit populated secrets.
 
 Docker alternative: set `SAP_CUA_DB_PASSWORD` to a URL-safe random value in `.env`,
 then `docker compose up --build`. The workbench listens on localhost:8000; the
-database has no published host port. Compose initializes knowledge before serving.
+database has no published host port. Knowledge initialization runs after the UI starts.
 The local desktop setup was tested natively; Compose integration is supplied for
 portability, with separate database and container-startup checks in CI.
 
@@ -39,7 +43,7 @@ portability, with separate database and container-startup checks in CI.
 - Create SFTP to OData V4 integration.
 - Diagnose a failing flow with HTTP 401.
 
-The planner is a conservative deterministic compiler for supported patterns.
+The planner is a conservative deterministic compiler for [supported patterns](docs/PLANNER_SUPPORTED_INTENTS.md).
 Diagnostics are not automatic repairs. Unsupported mapping/code/ProcessDirect
 requirements remain blocked. Sandbox results do not prove that SAP accepted an
 artifact or that an external business transaction succeeded.
@@ -57,6 +61,15 @@ uv run pytest -q
 Add approved text directly from the Knowledge panel, filter searches by collection,
 reopen saved plans after refresh, and download sanitized run evidence. See the
 [workspace guide](docs/WORKSPACE_FEATURES.md) for versioning and execution boundaries.
+
+## SAP DEV workflow
+
+Configure management and separate runtime OAuth credentials, enable DEV writes,
+import a reviewed UTF-8 iFlow export, set a synthetic POST/response contract,
+review the rendered ZIP and start the job. History, cancellation and evidence
+downloads remain available after a browser refresh. Existing iFlows are not
+overwritten and uncertain writes are not retried. Follow the
+[complete workflow and export requirements](docs/LIVE_WORKFLOW.md).
 
 ## Implemented
 
@@ -82,11 +95,12 @@ reopen saved plans after refresh, and download sanitized run evidence. See the
 
 ## Boundaries
 
-The dashboard deliberately executes only the simulator. A real DEV tenant,
-approved iFlow exports, tenant-specific selectors, capability/permission checks
-and functional test contracts are required to enable live end-to-end execution.
-API operations and the browser runtime are available as explicit integration
-components; their live orchestration is not yet tenant validated.
+The dashboard includes both sandbox engineering plans and explicit approved-template
+DEV deployments. Live execution requires a DEV connection, separate runtime OAuth
+credentials, an approved exported iFlow and its functional test contract. The
+workflow is covered by simulated API contracts and remains unvalidated against
+the user's SAP tenant. Browser/GUI automation has separate provider interfaces;
+real SAP DOM selectors and dialogs are not yet validated.
 
 The included 38 notes are original engineering guidance, not a complete SAP
 manual. Approved JSONL, text, Markdown, HTML and allowlisted public HTTPS sources

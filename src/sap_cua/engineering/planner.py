@@ -12,6 +12,87 @@ import uuid
 from sap_cua.engineering.schemas import SemanticPlan, SemanticStep
 from sap_cua.rag.schemas import Scope
 
+# Adapter order is semantic: the first endpoint is the sender and the second is
+# the receiver. Component mentions (notably JMS retry) are not endpoint adapters.
+_ADAPTER = re.compile(
+    r"\b(?:odata\s*(?:v?\s*[24])?|https?|rest|soap|sftp|jms|event\s*mesh|process\s*direct)\b",
+    re.IGNORECASE,
+)
+_COMPONENT = re.compile(
+    r"\b(?:content\s+modifier|modifier|router|splitter|jms\s+retry|exception\s+subprocess|error\s+handling)\b",
+    re.IGNORECASE,
+)
+_COMPONENT_NAMES = {
+    "content modifier": "ContentModifier",
+    "modifier": "ContentModifier",
+    "router": "Router",
+    "splitter": "Splitter",
+    "jms retry": "JMSRetry",
+    "exception subprocess": "ExceptionSubprocess",
+    "error handling": "ExceptionSubprocess",
+}
+# This is deliberately a small language, not an unrestricted NLP planner. Any
+# leftover clause needs a typed, implemented contract before it can be executed.
+_FILLER = re.compile(
+    r"\b(?:please|create|build|make|a|an|the|integration|flow|iflow|from|to|with|and|using|via|sender|receiver|adapter|adapters)\b",
+    re.IGNORECASE,
+)
+
+
+def _flow_intent(requirement: str):
+    components = []
+    for match in _COMPONENT.finditer(requirement):
+        name = _COMPONENT_NAMES[" ".join(match.group().lower().split())]
+        if name in components:
+            return None, None, [], "Repeated components require explicit component identifiers"
+        components.append(name)
+    endpoints = _COMPONENT.sub(" ", requirement)
+    matches = list(_ADAPTER.finditer(endpoints))
+    if len(matches) != 2:
+        return (
+            None,
+            None,
+            [],
+            "Specify exactly one sender and one receiver adapter (for example, JMS to HTTP)",
+        )
+    sender_name, receiver_name = [re.sub(r"\s+", "", m.group().lower()) for m in matches]
+    sender = {
+        "https": "HTTPS",
+        "http": "HTTPS",
+        "rest": "HTTPS",
+        "soap": "SOAP",
+        "sftp": "SFTP",
+        "jms": "JMS",
+        "eventmesh": "EventMesh",
+    }.get(sender_name)
+    receiver = {
+        "https": "HTTP",
+        "http": "HTTP",
+        "rest": "HTTP",
+        "soap": "SOAP",
+        "odata": "ODataV2",
+        "odata2": "ODataV2",
+        "odatav2": "ODataV2",
+        "odata4": "ODataV4",
+        "odatav4": "ODataV4",
+    }.get(receiver_name)
+    if not sender or not receiver:
+        return (
+            None,
+            None,
+            [],
+            "The requested sender/receiver combination has no supported construction contract",
+        )
+    remainder = _FILLER.sub(" ", _ADAPTER.sub(" ", endpoints))
+    if re.sub(r"[\s,.;:>\-→]", "", remainder):
+        return (
+            None,
+            None,
+            [],
+            "The requirement contains unsupported configuration or an ambiguous clause; use a supported adapter pair and components",
+        )
+    return sender, receiver, components, None
+
 
 class SAPPlanner:
     name = "deterministic_sap_patterns_v1"
@@ -25,7 +106,7 @@ class SAPPlanner:
         hits = self.retriever.search(requirement, scope) if use_rag and self.retriever else []
         sources = [h.model_dump() for h in hits]
         ids = [h.id for h in hits]
-        q = requirement.lower()
+        q = requirement.strip().lower()
         run_id = uuid.uuid4().hex[:12]
         standards = {}
         for hit in hits:
@@ -117,7 +198,8 @@ class SAPPlanner:
         elif any(
             x in q
             for x in (
-                "https",
+                "http",
+                "rest",
                 "sftp",
                 "soap",
                 "odata",
@@ -128,26 +210,21 @@ class SAPPlanner:
                 "integration flow",
             )
         ):
-            sender = (
-                "SFTP"
-                if "sftp" in q
-                else "SOAP"
-                if re.match(r"(?:create\s+)?soap", q)
-                else "JMS"
-                if q.startswith("jms")
-                else "EventMesh"
-                if "event mesh" in q
-                else "HTTPS"
-            )
-            receiver = (
-                "ODataV4"
-                if re.search(r"odata\s*(v?4)", q)
-                else "ODataV2"
-                if "odata" in q
-                else "SOAP"
-                if "soap" in q and sender != "SOAP"
-                else "HTTP"
-            )
+            sender, receiver, components, intent_error = _flow_intent(requirement)
+            if intent_error:
+                return SemanticPlan(
+                    id=run_id,
+                    requirement=requirement,
+                    planner=self.name,
+                    backend=backend,
+                    customer=scope.customer,
+                    tenant=scope.tenant,
+                    pattern="UNSUPPORTED",
+                    steps=[],
+                    sources=sources,
+                    assumptions=["Only explicitly supported deterministic requirements compile."],
+                    blockers=[*blockers, intent_error],
+                )
             pattern = f"{sender.upper()}_TO_{receiver.upper()}"
             base = {"package_id": package, "iflow_id": flow}
             add(
@@ -167,21 +244,6 @@ class SAPPlanner:
                 {"type": "adapter", "direction": "sender", "adapter": sender, **base},
                 executor="template",
             )
-            components = []
-            if "modifier" in q:
-                components.append("ContentModifier")
-            if "router" in q:
-                components.append("Router")
-            if "splitter" in q:
-                components.append("Splitter")
-            if "groovy" in q:
-                blockers.append(
-                    "Groovy generation requires a tested, approved code pattern; arbitrary code is not deployed"
-                )
-            if "jms" in q and sender != "JMS":
-                components.append("JMSRetry")
-            if "exception" in q or "error handling" in q:
-                components.append("ExceptionSubprocess")
             for component in components:
                 add(
                     "ADD_COMPONENT",

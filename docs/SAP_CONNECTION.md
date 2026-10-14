@@ -4,7 +4,8 @@ The local dashboard includes a **SAP DEV connection** panel. It reports which
 configuration names are missing; it never returns client IDs, passwords, access
 or CSRF tokens, message contents, or raw SAP responses.
 
-Configure these values in the repository's ignored `.env` and restart the app:
+Configure management credentials in the connection form for server-session storage,
+or set these values in the repository's ignored `.env` and restart the app:
 
 - `SAP_API_BASE_URL`: the DEV API service root ending in `/api/v1`.
 - `SAP_TOKEN_URL`: OAuth client-credentials token endpoint from the service key.
@@ -12,8 +13,10 @@ Configure these values in the repository's ignored `.env` and restart the app:
 - `SAP_CLIENT_SECRET`: service-key client secret.
 
 Keep real values outside chat and Git. Reuse the local database configuration
-already installed on this machine. The dashboard does not accept API hosts or
-credentials in request bodies. Its probe reads only the server configuration.
+already installed on this machine. Browser-submitted credentials are held only
+in the server process and are not echoed in responses. Environment/`.env` values
+persist through the mechanism you supply. The [live workflow](LIVE_WORKFLOW.md)
+also requires separate runtime OAuth credentials and explicit DEV write permission.
 
 **Check read access** requests at most one package, runtime artifact and MPL entry.
 The OAuth token request is a POST; SAP content requests are GETs. Successful
@@ -44,8 +47,9 @@ an end no earlier than its start. ISO timestamps and SAP/OData millisecond dates
 are supported. Payload correctness still requires an independent business assertion.
 
 All live contracts remain unvalidated against this user's tenant because the DEV
-service key and approved iFlow export have not been provided. The dashboard's
-engineering executor remains sandbox-only.
+service key and approved iFlow export have not been provided. Natural-language
+engineering plans execute in the sandbox; the separate approved-template workflow
+can perform explicitly enabled DEV operations. See [LIVE_WORKFLOW](LIVE_WORKFLOW.md).
 
 Primary SAP references used for the contracts:
 

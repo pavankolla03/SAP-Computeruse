@@ -66,8 +66,13 @@ class SAPAPIClient:
             raise ValueError("SAP request timeout must be between 0 and 60 seconds")
         self.allow_mutations = allow_mutations
         self._client = httpx.Client(
-            transport=transport, timeout=timeout_seconds, follow_redirects=False, trust_env=False
+            transport=transport,
+            timeout=timeout_seconds,
+            follow_redirects=False,
+            trust_env=False,
+            headers={"Accept-Encoding": "identity"},
         )
+        self._response_seconds = timeout_seconds
         self._csrf = ""
         self._token = ""
         self._expires = 0.0
@@ -81,11 +86,33 @@ class SAPAPIClient:
     def __exit__(self, *args):
         self.close()
 
+    def _bounded_request(self, method, url, *, max_bytes=4_000_000, **kwargs):
+        """Bound success payloads and trickling bodies in addition to idle timeouts."""
+        deadline = time.monotonic() + self._response_seconds
+        with self._client.stream(method, url, **kwargs) as response:
+            content = bytearray()
+            if 200 <= response.status_code < 300:
+                if response.headers.get("content-encoding", "identity").lower() != "identity":
+                    raise ValueError("Unsupported response encoding")
+                for chunk in response.iter_bytes():
+                    if len(content) + len(chunk) > max_bytes or time.monotonic() >= deadline:
+                        raise ValueError("SAP response observation budget exceeded")
+                    content.extend(chunk)
+            # Discard error bodies entirely; callers only use the status/headers.
+            return httpx.Response(
+                response.status_code,
+                headers=response.headers,
+                content=bytes(content),
+                request=response.request,
+            )
+
     def _access_token(self) -> str:
         if time.monotonic() < self._expires:
             return self._token
-        response = self._client.post(
+        response = self._bounded_request(
+            "POST",
             self.token_url,
+            max_bytes=65536,
             data={"grant_type": "client_credentials"},
             auth=httpx.BasicAuth(self.client_id, self._secret),
         )
@@ -124,7 +151,8 @@ class SAPAPIClient:
             }
             if method != "GET":
                 if not self._csrf:
-                    csrf_response = self._client.get(
+                    csrf_response = self._bounded_request(
+                        "GET",
                         self.api_base + "/IntegrationPackages",
                         headers={**headers, "X-CSRF-Token": "Fetch"},
                         params={"$top": 1},
@@ -136,7 +164,7 @@ class SAPAPIClient:
                     self._csrf = csrf_response.headers["X-CSRF-Token"]
                 headers["X-CSRF-Token"] = self._csrf
             request_started = True
-            response = self._client.request(
+            response = self._bounded_request(
                 method,
                 self.api_base + "/" + resource,
                 headers=headers,
@@ -153,6 +181,12 @@ class SAPAPIClient:
                     "data": None,
                     "status_code": response.status_code,
                     "error": f"SAP returned HTTP {response.status_code}; response body withheld",
+                    # A timeout/server error can follow an applied mutation. Its
+                    # rejection cannot be inferred from the HTTP status alone.
+                    "outcome": "unknown"
+                    if method != "GET"
+                    and (response.status_code >= 500 or response.status_code == 408)
+                    else "rejected",
                     "backend": "sap_api",
                 }
             if not response.content:

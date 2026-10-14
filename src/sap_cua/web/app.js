@@ -17,7 +17,11 @@ async function request(base, path, body) {
   let result;
   try { result = await response.json(); }
   catch { throw Error('The service could not complete the request. Refresh and try again.'); }
-  if (!response.ok) throw Error(typeof result.detail === 'string' ? result.detail : 'Check the form fields and try again.');
+  if (!response.ok) {
+    const error = Error(typeof result.detail === 'string' ? result.detail : 'Check the form fields and try again.');
+    error.retryAfter = response.status === 503 ? Number(response.headers.get('Retry-After') || 0) : 0;
+    throw error;
+  }
   return result;
 }
 const api = (path, body) => request('/api/rag', path, body);
@@ -86,7 +90,7 @@ async function status() {
   $('knowledge-status').textContent = Object.values(s.collections).reduce((a, b) => a + b, 0) + ' knowledge versions';
   $('scope-status').textContent = s.scope.customer + ' / ' + s.scope.tenant;
   $('capabilities').replaceChildren();
-  for (const [key, value] of Object.entries({Store: s.backend, Embedding: s.embedding, Reranker: s.reranker, Training: 'Not required', Execution: 'Local sandbox; live SAP disabled'})) $('capabilities').append(node('dt', key), node('dd', value));
+  for (const [key, value] of Object.entries({Store: s.backend, Embedding: s.embedding, Reranker: s.reranker, Training: 'Not required', Execution: 'Sandbox planner and reviewed DEV artifact workflow'})) $('capabilities').append(node('dt', key), node('dd', value));
 }
 $('plan-button').addEventListener('click', async () => {
   const button = $('plan-button'); button.disabled = true; invalidatePlan();
@@ -136,23 +140,17 @@ $('knowledge-form').addEventListener('submit', async event => {
   } catch (e) { $('import-message').textContent = e.message; }
   finally { button.disabled = false; }
 });
-$('refresh').addEventListener('click', () => refresh().catch(e => message(e.message, true)));
-status().catch(e => { $('knowledge-status').textContent = 'Setup required'; message(e.message, true); });
-refresh().catch(e => message(e.message, true));
-function showConnection(s) {
-  $('sap-badge').textContent = s.configured ? 'CONFIGURED · UNVALIDATED' : 'SETUP REQUIRED'; $('sap-probe').disabled = !s.configured;
-  $('sap-setup').textContent = s.configured ? 'Configured host: ' + s.tenant_host + '. Check read access to continue.' : 'Configure ' + [...s.missing, ...s.invalid].join(', ') + ' in the project’s ignored .env file, then restart the app. Keep secret values out of chat.';
-  const probe = s.last_probe || s;
-  if (probe.checks) {
-    $('sap-checks').replaceChildren();
-    for (const check of probe.checks) $('sap-checks').append(node('div', check.resource + ' · ' + (check.success ? 'read access confirmed' : check.reason) + (check.status_code ? ' · HTTP ' + check.status_code : ''), 'connection-check'));
-    if (probe.success) $('sap-badge').textContent = 'READ ACCESS CONFIRMED';
-    else if (probe.checks.length) $('sap-badge').textContent = 'CHECK NEEDS ATTENTION';
+let statusTimer = null;
+async function loadStatus(attempt = 0) {
+  if (statusTimer) clearTimeout(statusTimer);
+  try { await status(); if (attempt > 0) await refresh(); }
+  catch (e) {
+    if (e.retryAfter > 0 && attempt < 60) {
+      $('knowledge-status').textContent = 'Starting knowledge…';
+      statusTimer = setTimeout(() => loadStatus(attempt + 1), Math.min(e.retryAfter, 5) * 1000);
+    } else { $('knowledge-status').textContent = 'Setup required'; message(e.message, true); }
   }
 }
-$('sap-probe').addEventListener('click', async () => {
-  $('sap-probe').disabled = true; $('sap-setup').textContent = 'Checking read access…';
-  try { showConnection(await sapApi('/probe', {})); }
-  catch (e) { $('sap-setup').textContent = e.message; $('sap-probe').disabled = false; }
-});
-sapApi('/status').then(showConnection).catch(e => { $('sap-setup').textContent = e.message; });
+$('refresh').addEventListener('click', () => { loadStatus(); refresh().catch(e => message(e.message, true)); });
+loadStatus();
+refresh().catch(e => { if (!e.retryAfter) message(e.message, true); });

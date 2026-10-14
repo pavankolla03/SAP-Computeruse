@@ -1,5 +1,6 @@
 import hashlib
 import json
+import os
 from typing import Literal
 
 from fastapi import APIRouter, HTTPException, Request
@@ -34,9 +35,16 @@ class PlanRequest(BaseModel):
 def service(request):
     instance = request.app.state.rag
     if instance is None:
+        initializing = bool(os.getenv("SAP_CUA_DATABASE_URL")) and not getattr(
+            request.app.state, "rag_error", None
+        )
         raise HTTPException(
             503,
-            "RAG database is not configured. Run sap-cua rag init with SAP_CUA_DATABASE_URL set.",
+            "Knowledge initialization is unavailable. Check the database and embedding cache configuration."
+            if getattr(request.app.state, "rag_error", None)
+            else "Knowledge is initializing or not configured. SAP DEV setup remains available. "
+            "Set SAP_CUA_DATABASE_URL to enable retrieval.",
+            headers={"Retry-After": "2"} if initializing else None,
         )
     return instance
 
